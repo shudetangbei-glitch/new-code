@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>每日暖心话</title>
+<style>
+  :root {
+    --bg: #faf8f5;
+    --card: #ffffff;
+    --text: #2b2b2b;
+    --muted: #8a8a8a;
+    --border: #e8e3db;
+    --encourage: #c9862f;
+    --praise: #8b6dae;
+    --care: #4e93a0;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding: 24px 16px 60px;
+    min-height: 100vh;
+  }
+  .wrap { max-width: 480px; margin: 0 auto; }
+  header { text-align: center; margin-bottom: 20px; }
+  header h1 { font-size: 20px; font-weight: 600; margin: 0 0 4px; }
+  header p { font-size: 13px; color: var(--muted); margin: 0; }
+
+  .card {
+    background: var(--card);
+    border-radius: 18px;
+    padding: 18px 18px 16px;
+    margin-bottom: 14px;
+    box-shadow: 0 3px 14px rgba(0,0,0,0.05);
+    border-left: 4px solid var(--tag-color, var(--border));
+  }
+  .tag {
+    display: inline-block;
+    font-size: 11px;
+    padding: 3px 10px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--tag-color) 14%, white);
+    color: var(--tag-color);
+    font-weight: 600;
+    margin-bottom: 10px;
+  }
+  .sentence { font-size: 16px; line-height: 1.6; margin-bottom: 14px; }
+  .choices { display: flex; gap: 10px; }
+  .choice-btn {
+    flex: 1;
+    padding: 10px 0;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    font-size: 14px;
+    font-family: inherit;
+    color: var(--text);
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .choice-btn.active-yes {
+    background: color-mix(in srgb, var(--tag-color) 16%, white);
+    border-color: var(--tag-color);
+    color: var(--tag-color);
+    font-weight: 600;
+  }
+  .choice-btn.active-no {
+    background: #f1f1f1;
+    border-color: #bbb;
+    color: #666;
+    font-weight: 600;
+  }
+
+  .submit-btn {
+    width: 100%;
+    padding: 14px 0;
+    border-radius: 14px;
+    border: none;
+    background: #2b2b2b;
+    color: white;
+    font-size: 15px;
+    font-family: inherit;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 6px;
+    transition: opacity 0.15s ease;
+  }
+  .submit-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+  .done-card {
+    background: var(--card);
+    border-radius: 18px;
+    padding: 26px 20px;
+    text-align: center;
+    box-shadow: 0 3px 14px rgba(0,0,0,0.05);
+  }
+  .done-card .emoji { font-size: 34px; margin-bottom: 10px; }
+  .done-card h2 { font-size: 17px; margin: 0 0 6px; }
+  .done-card p { font-size: 13px; color: var(--muted); margin: 0 0 4px; }
+  .streak { font-size: 13px; color: var(--muted); margin-top: 14px; }
+  .streak b { color: var(--text); font-size: 16px; }
+
+  .weights {
+    margin-top: 20px;
+    background: var(--card);
+    border-radius: 16px;
+    padding: 16px 18px;
+    box-shadow: 0 3px 14px rgba(0,0,0,0.05);
+  }
+  .weights h3 { font-size: 13px; color: var(--muted); margin: 0 0 12px; font-weight: 600; }
+  .w-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .w-label { width: 44px; font-size: 12px; color: var(--muted); flex-shrink: 0; }
+  .w-track { flex: 1; height: 8px; border-radius: 4px; background: #eee; overflow: hidden; }
+  .w-fill { height: 100%; border-radius: 4px; }
+
+  .history-toggle {
+    display: block;
+    text-align: center;
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 16px;
+    background: none;
+    border: none;
+    font-family: inherit;
+    cursor: pointer;
+    text-decoration: underline;
+  }
+  .history { margin-top: 12px; }
+  .history-item {
+    background: var(--card);
+    border-radius: 14px;
+    padding: 12px 16px;
+    margin-bottom: 10px;
+    font-size: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  }
+  .history-item .h-date { color: var(--muted); margin-bottom: 6px; font-weight: 600; }
+  .history-item div.h-sentence { margin-bottom: 3px; line-height: 1.5; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>每日暖心话</h1>
+    <p id="dateLabel"></p>
+  </header>
+  <div id="app"></div>
+</div>
+
+<script>
+const STORAGE_KEY = "dailyCheerState_v2";
+const COOLDOWN_DAYS = 20;
+const LEARNING_RATE = 0.15;
+const MIN_WEIGHT = 0.3;
+const MAX_WEIGHT = 3;
+
+const CATS = {
+  encourage: { label: "鼓励", color: "var(--encourage)" },
+  praise: { label: "赞美", color: "var(--praise)" },
+  care: { label: "关心", color: "var(--care)" },
+};
+
+const POOL = {
+  encourage: [
+    "你已经很努力了,这份坚持值得被看见。",
+    "就算今天进展缓慢,你也一直在往前走。",
+    "累的时候歇一歇没关系,你不需要一直逞强。",
+    "你处理压力的方式,比你自己以为的更成熟。",
+    "遇到难题时你没有放弃,这就已经很了不起。",
+    "你的努力不会白费,时间会给你答案。",
+    "不管别人怎么说,你按自己的节奏来就好。",
+    "你今天愿意开始,就已经赢过了昨天的犹豫。",
+    "有些事急不来,你已经做得比想象中好。",
+    "你值得为自己的每一次尝试鼓掌。",
+    "哪怕只前进了一小步,那也是真实的进步。",
+    "你不是一个人在扛,你比自己想的更有力量。",
+    "慢慢来也没关系,方向对了就不算浪费时间。",
+    "你今天的辛苦,以后会变成让你骄傲的故事。",
+    "遇到困难时你依然选择认真面对,这很珍贵。",
+    "你已经走过了很多不容易的日子,今天也一定可以。",
+    "不完美也没关系,你已经在很认真地生活了。",
+    "你有能力把今天的事情一件件处理好。",
+    "你的坚持,正在悄悄改变着一些事情。",
+    "累积的努力总有一天会开花,你已经在路上了。",
+    "你愿意再试一次,这份勇气很难得。",
+    "不用和别人比,你今天比昨天的自己更好就够了。",
+    "你面对生活的态度,比你想象中更让人佩服。",
+    "每一次小小的坚持,都是了不起的自律。",
+    "你已经做得很好了,给自己一点认可吧。",
+    "遇到低谷的时候,你也在努力找回状态,这很勇敢。",
+    "你不需要证明什么,你本来就足够努力。",
+    "今天如果只完成了一点点,那也算数。",
+    "你身上那股不服输的劲儿,一直都在。",
+    "你正在成为一个更从容的自己,慢慢来就好。",
+  ],
+  praise: [
+    "你是一个很温柔又很有原则的人。",
+    "你身上那种认真劲儿,很难得。",
+    "你考虑事情很周到,这是很珍贵的品质。",
+    "你对待朋友的方式,让人觉得很安心。",
+    "你有一种让人愿意靠近的真诚。",
+    "你处理问题时的冷静,很让人欣赏。",
+    "你是那种说到做到的人,很值得信赖。",
+    "你身上有种不动声色的坚强。",
+    "你对生活的认真态度,很打动人。",
+    "你善于发现小事里的美好,这种能力很宝贵。",
+    "你待人接物很有分寸,让人很舒服。",
+    "你身上有种独特的韧性,不容易被打倒。",
+    "你的细心,总能在关键时刻帮到别人。",
+    "你有很好的审美和品味,这是长期积累的结果。",
+    "你是个愿意为别人着想的人,这很难得。",
+    "你身上那份从容,是经历过沉淀的。",
+    "你很擅长把复杂的事情安排得井井有条。",
+    "你有一种让人放松的幽默感。",
+    "你对自己的要求很高,但也别忘了对自己温柔一点。",
+    "你身上那股韧劲,让人觉得很可靠。",
+    "你的表达很清晰,让人很容易理解你的想法。",
+    "你很懂得倾听,这是一种被低估的能力。",
+    "你身上有种踏实感,让人很安心。",
+    "你对细节的敏感,常常能发现别人忽略的地方。",
+    "你是个很有主见但又不固执的人。",
+    "你身上那份善意,很容易感染身边的人。",
+    "你处理情绪的方式,比很多人更成熟。",
+    "你对喜欢的事情很专注,这种专注很迷人。",
+    "你有种让人信任的踏实感。",
+    "你身上那份对生活的热情,一直都在。",
+  ],
+  care: [
+    "今天也要记得吃早饭哦。",
+    "天气变化的时候,记得多穿一件衣服。",
+    "如果今天很累,允许自己早点休息。",
+    "工作再忙,也别忘了喝口水。",
+    "如果心情不好,不用勉强自己开心。",
+    "今天遇到不顺心的事,记得也要好好照顾自己。",
+    "累的时候可以停下来,深呼吸一下。",
+    "不管今天多忙,记得留一点时间给自己。",
+    "如果觉得压力大,和信任的人聊聊也没关系。",
+    "今天如果哪里不舒服,别硬撑,该休息就休息。",
+    "记得眼睛也要休息一下,别一直盯着屏幕。",
+    "今天出门如果下雨,记得带伞。",
+    "如果今天很难,也请对自己耐心一点。",
+    "别忘了午饭要好好吃,不要将就。",
+    "今天不管发生什么,你都值得被好好对待。",
+    "如果觉得累,休息不是偷懒,是必要的。",
+    "记得抽空活动一下身体,别一直坐着。",
+    "今天如果情绪有点低落,那也没关系,会过去的。",
+    "别忘了适当放松一下肩膀和脖子。",
+    "今天也要好好爱护自己的身体。",
+    "如果睡眠不够,今晚早点休息吧。",
+    "忙碌之余,记得抬头看看窗外的天空。",
+    "今天如果压力大,记得给自己一点缓冲的时间。",
+    "别忘了给自己倒一杯温水。",
+    "如果今天特别累,晚上就早点睡吧。",
+    "遇到烦心事,先照顾好自己的情绪。",
+    "今天如果没做完的事,明天继续也没关系。",
+    "记得给自己一点小小的奖励,哪怕只是一杯喜欢的饮品。",
+    "无论今天顺不顺利,你都辛苦了。",
+    "好好照顾自己,是你能为自己做的最重要的事。",
+  ],
+};
+
+function todayStr() {
+  return new Date().toDateString();
+}
+
+function daysBetween(a, b) {
+  return Math.round((new Date(b) - new Date(a)) / 86400000);
+}
+
+function loadState() {
+  const raw = localStorage.getItem(STORAGE_KEY);
+  if (raw) {
+    try { return JSON.parse(raw); } catch (e) {}
+  }
+  return {
+    weights: { encourage: 1, praise: 1, care: 1 },
+    lastShown: {},
+    today: null,
+    streak: 0,
+    lastCompletedDate: null,
+    history: [],
+  };
+}
+
+function saveState(state) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+}
+
+function pickSentences(state) {
+  const today = todayStr();
+  const allEntries = [];
+  Object.keys(POOL).forEach(cat => {
+    POOL[cat].forEach((text, idx) => {
+      const id = cat + "_" + idx;
+      const lastShown = state.lastShown[id];
+      const eligible = !lastShown || daysBetween(lastShown, today) >= COOLDOWN_DAYS;
+      allEntries.push({ id, cat, text, lastShown: lastShown || null, eligible });
+    });
+  });
+
+  const chosen = [];
+  const usedIds = new Set();
+
+  for (let i = 0; i < 3; i++) {
+    let pool = allEntries.filter(e => e.eligible && !usedIds.has(e.id));
+    if (pool.length === 0) {
+      pool = allEntries
+        .filter(e => !usedIds.has(e.id))
+        .sort((a, b) => (a.lastShown || "0") < (b.lastShown || "0") ? -1 : 1);
+    }
+    if (pool.length === 0) break;
+
+    const totalWeight = pool.reduce((sum, e) => sum + state.weights[e.cat], 0);
+    let r = Math.random() * totalWeight;
+    let selected = pool[0];
+    for (const e of pool) {
+      r -= state.weights[e.cat];
+      if (r <= 0) { selected = e; break; }
+    }
+    chosen.push(selected);
+    usedIds.add(selected.id);
+  }
+
+  chosen.forEach(c => { state.lastShown[c.id] = today; });
+  return chosen.map(c => ({ id: c.id, cat: c.cat, text: c.text }));
+}
+
+function ensureToday(state) {
+  const today = todayStr();
+  if (!state.today || state.today.date !== today) {
+    const items = pickSentences(state);
+    state.today = { date: today, items, answers: [null, null, null], submitted: false };
+    saveState(state);
+  }
+  return state;
+}
+
+function applyFeedback(state) {
+  const { items, answers } = state.today;
+  items.forEach((item, i) => {
+    const delta = answers[i] ? LEARNING_RATE : -LEARNING_RATE;
+    const next = state.weights[item.cat] + delta;
+    state.weights[item.cat] = Math.min(MAX_WEIGHT, Math.max(MIN_WEIGHT, next));
+  });
+
+  const today = state.today.date;
+  const y = new Date();
+  y.setDate(y.getDate() - 1);
+  const yesterday = y.toDateString();
+  if (state.lastCompletedDate === yesterday) {
+    state.streak += 1;
+  } else if (state.lastCompletedDate !== today) {
+    state.streak = 1;
+  }
+  state.lastCompletedDate = today;
+
+  state.history.unshift({ date: today, items, answers: answers.slice() });
+  state.history = state.history.slice(0, 30);
+
+  saveState(state);
+}
+
+let state = loadState();
+state = ensureToday(state);
+
+const app = document.getElementById("app");
+document.getElementById("dateLabel").textContent = new Date().toLocaleDateString("zh-CN", { year: "numeric", month: "long", day: "numeric", weekday: "long" });
+
+function isCompletedToday() {
+  return !!state.today.submitted;
+}
+
+function render() {
+  app.innerHTML = "";
+  if (isCompletedToday()) {
+    renderDone();
+  } else {
+    renderQuestions();
+  }
+}
+
+function renderQuestions() {
+  const { items, answers } = state.today;
+
+  items.forEach((item, i) => {
+    const cat = CATS[item.cat];
+    const card = document.createElement("div");
+    card.className = "card";
+    card.style.setProperty("--tag-color", cat.color);
+    card.innerHTML = `
+      <div class="tag">${cat.label}</div>
+      <div class="sentence">${item.text}</div>
+      <div class="choices">
+        <button class="choice-btn ${answers[i] === true ? "active-yes" : ""}" data-i="${i}" data-v="yes">是,说到心里了</button>
+        <button class="choice-btn ${answers[i] === false ? "active-no" : ""}" data-i="${i}" data-v="no">否,一般般</button>
+      </div>
+    `;
+    app.appendChild(card);
+  });
+
+  const submitBtn = document.createElement("button");
+  submitBtn.className = "submit-btn";
+  submitBtn.textContent = "提交今天的感受";
+  submitBtn.disabled = !answers.every(a => a !== null);
+  app.appendChild(submitBtn);
+
+  app.querySelectorAll(".choice-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const i = parseInt(btn.dataset.i, 10);
+      state.today.answers[i] = btn.dataset.v === "yes";
+      saveState(state);
+      render();
+    });
+  });
+
+  submitBtn.addEventListener("click", () => {
+    if (!state.today.answers.every(a => a !== null)) return;
+    applyFeedback(state);
+    state.today.submitted = true;
+    saveState(state);
+    render();
+  });
+}
+
+function renderDone() {
+  const box = document.createElement("div");
+  box.className = "done-card";
+  box.innerHTML = `
+    <div class="emoji">🌱</div>
+    <h2>谢谢你的反馈</h2>
+    <p>我已经记下了,会让明天的话更懂你一点。</p>
+    <div class="streak">已经陪伴你 <b>${state.streak}</b> 天</div>
+  `;
+  app.appendChild(box);
+  app.appendChild(renderWeights());
+  app.appendChild(renderHistoryToggle());
+}
+
+function renderWeights() {
+  const box = document.createElement("div");
+  box.className = "weights";
+  const title = document.createElement("h3");
+  title.textContent = "学习进度(越长代表越懂你)";
+  box.appendChild(title);
+
+  const total = Object.values(state.weights).reduce((a, b) => a + b, 0);
+  Object.keys(CATS).forEach(key => {
+    const cat = CATS[key];
+    const pct = Math.round((state.weights[key] / total) * 100);
+    const row = document.createElement("div");
+    row.className = "w-row";
+    row.innerHTML = `
+      <div class="w-label">${cat.label}</div>
+      <div class="w-track"><div class="w-fill" style="width:${pct}%; background:${cat.color}"></div></div>
+    `;
+    box.appendChild(row);
+  });
+  return box;
+}
+
+function renderHistoryToggle() {
+  const wrap = document.createElement("div");
+  const btn = document.createElement("button");
+  btn.className = "history-toggle";
+  btn.textContent = "查看最近的记录";
+  const list = document.createElement("div");
+  list.className = "history";
+  list.style.display = "none";
+
+  state.history.slice(0, 7).forEach(h => {
+    const item = document.createElement("div");
+    item.className = "history-item";
+    const dateLine = document.createElement("div");
+    dateLine.className = "h-date";
+    dateLine.textContent = h.date;
+    item.appendChild(dateLine);
+    h.items.forEach((it, i) => {
+      const line = document.createElement("div");
+      line.className = "h-sentence";
+      line.textContent = (h.answers[i] ? "💛 " : "🤍 ") + it.text;
+      item.appendChild(line);
+    });
+    list.appendChild(item);
+  });
+
+  btn.addEventListener("click", () => {
+    list.style.display = list.style.display === "none" ? "block" : "none";
+    btn.textContent = list.style.display === "none" ? "查看最近的记录" : "收起记录";
+  });
+
+  wrap.appendChild(btn);
+  wrap.appendChild(list);
+  return wrap;
+}
+
+render();
+</script>
+</body>
+</html>
