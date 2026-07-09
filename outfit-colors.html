@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>穿搭配色工具</title>
+<style>
+  :root {
+    --bg: #faf8f5;
+    --card: #ffffff;
+    --text: #2b2b2b;
+    --muted: #8a8a8a;
+    --accent: #b08d57;
+    --border: #e8e3db;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding: 20px 16px 60px;
+  }
+  header { text-align: center; margin-bottom: 20px; }
+  header h1 { font-size: 20px; font-weight: 600; margin: 0 0 4px; }
+  header p { font-size: 13px; color: var(--muted); margin: 0; }
+
+  .section-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--muted);
+    margin: 20px 0 10px 4px;
+    letter-spacing: 1px;
+  }
+
+  .style-tabs {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+  }
+  .style-tab {
+    flex-shrink: 0;
+    padding: 8px 16px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--card);
+    font-size: 13px;
+    font-family: inherit;
+    color: var(--text);
+    cursor: pointer;
+  }
+  .style-tab.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: white;
+    font-weight: 600;
+  }
+
+  .swatch-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
+    gap: 12px;
+  }
+  .swatch {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    background: none;
+    border: none;
+    padding: 0;
+    font-family: inherit;
+  }
+  .swatch .chip {
+    width: 56px;
+    height: 56px;
+    border-radius: 16px;
+    border: 1px solid var(--border);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+  .swatch.selected .chip {
+    transform: scale(1.08);
+    box-shadow: 0 0 0 3px var(--accent), 0 4px 10px rgba(0,0,0,0.12);
+  }
+  .swatch span {
+    font-size: 12px;
+    color: var(--text);
+  }
+
+  .result-card {
+    margin-top: 24px;
+    background: var(--card);
+    border-radius: 20px;
+    padding: 20px 18px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+    display: none;
+  }
+  .result-card.show { display: block; }
+  .result-main {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 16px;
+  }
+  .result-main .chip-lg {
+    width: 48px;
+    height: 48px;
+    border-radius: 14px;
+    border: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .result-main .label {
+    font-size: 13px;
+    color: var(--muted);
+  }
+  .result-main .name {
+    font-size: 18px;
+    font-weight: 600;
+  }
+  .match-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .match-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .match-item .chip-md {
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .match-item .name {
+    font-size: 15px;
+    font-weight: 500;
+  }
+  .match-item .desc {
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .placeholder {
+    text-align: center;
+    color: var(--muted);
+    font-size: 13px;
+    padding: 30px 10px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>穿搭配色工具</h1>
+  <p>选主色 + 选风格,看推荐搭配</p>
+</header>
+
+<div class="section-title">风格偏好</div>
+<div class="style-tabs" id="styleTabs"></div>
+
+<div class="section-title">主色选择</div>
+<div class="swatch-grid" id="mainGrid"></div>
+
+<div class="result-card" id="resultCard">
+  <div class="result-main">
+    <div class="chip-lg" id="mainChip"></div>
+    <div>
+      <div class="label">当前主色</div>
+      <div class="name" id="mainName"></div>
+    </div>
+  </div>
+  <div class="section-title" style="margin:0 0 12px;">推荐搭配色</div>
+  <div class="match-list" id="matchList"></div>
+</div>
+
+<div class="placeholder" id="placeholder">选好风格后,点上方色块查看搭配建议</div>
+
+<script>
+const COLORS = {
+  miBai:    { name: "米白", hex: "#F1EBDD" },
+  cangQing: { name: "藏青", hex: "#1C2B4A" },
+  tuoSe:    { name: "驼色", hex: "#C29B6C" },
+  kaQi:     { name: "卡其", hex: "#C6B48A" },
+  shenHui:  { name: "深灰", hex: "#4E4E4E" },
+  hei:      { name: "黑",   hex: "#1A1A1A" },
+  bai:      { name: "白",   hex: "#FFFFFF" },
+  hongZong: { name: "红棕", hex: "#8F4A2C" },
+  moLv:     { name: "墨绿", hex: "#2B4436" },
+  qianLan:  { name: "浅蓝", hex: "#A9C6E0" },
+  shanHu:   { name: "珊瑚橙", hex: "#E8795A" },
+  jiangHuang:{ name: "姜黄", hex: "#D9A441" },
+  baoLan:   { name: "宝蓝", hex: "#1F5FA8" },
+  jiuHong:  { name: "酒红", hex: "#7B2D3B" },
+  boHe:     { name: "薄荷绿", hex: "#8FC9A9" },
+  zhuanHong:{ name: "砖红", hex: "#B14A3D" },
+};
+
+const MAIN_COLOR_KEYS = ["miBai", "cangQing", "tuoSe", "kaQi", "shenHui", "hei", "bai", "hongZong", "moLv", "qianLan"];
+
+const STYLES = [
+  { key: "baida", label: "百搭" },
+  { key: "zhengshi", label: "正式" },
+  { key: "xiuxian", label: "休闲" },
+  { key: "xianyan", label: "鲜艳" },
+];
+
+const MATCHES = {
+  miBai:    { baida: ["cangQing", "tuoSe", "qianLan"], zhengshi: ["cangQing", "shenHui"], xiuxian: ["kaQi", "qianLan"], xianyan: ["shanHu", "baoLan"] },
+  cangQing: { baida: ["miBai", "kaQi", "bai"],          zhengshi: ["bai", "shenHui"],       xiuxian: ["kaQi", "hongZong"], xianyan: ["jiangHuang", "shanHu"] },
+  tuoSe:    { baida: ["cangQing", "shenHui", "bai"],    zhengshi: ["cangQing", "bai"],       xiuxian: ["miBai", "kaQi"],    xianyan: ["baoLan", "jiuHong"] },
+  kaQi:     { baida: ["cangQing", "bai", "hongZong"],   zhengshi: ["cangQing", "shenHui"],   xiuxian: ["miBai", "qianLan"], xianyan: ["zhuanHong", "boHe"] },
+  shenHui:  { baida: ["qianLan", "bai", "hei"],         zhengshi: ["hei", "bai"],            xiuxian: ["kaQi", "qianLan"],  xianyan: ["jiangHuang", "shanHu"] },
+  hei:      { baida: ["bai", "hongZong", "qianLan"],    zhengshi: ["bai", "shenHui"],        xiuxian: ["kaQi", "hongZong"], xianyan: ["jiangHuang", "baoLan"] },
+  bai:      { baida: ["hei", "cangQing", "hongZong"],   zhengshi: ["hei", "cangQing"],       xiuxian: ["kaQi", "qianLan"],  xianyan: ["shanHu", "boHe"] },
+  hongZong: { baida: ["kaQi", "miBai", "hei"],          zhengshi: ["hei", "shenHui"],        xiuxian: ["miBai", "kaQi"],    xianyan: ["boHe", "baoLan"] },
+  moLv:     { baida: ["miBai", "tuoSe", "hei"],         zhengshi: ["hei", "shenHui"],        xiuxian: ["kaQi", "miBai"],    xianyan: ["jiangHuang", "zhuanHong"] },
+  qianLan:  { baida: ["bai", "shenHui", "miBai"],       zhengshi: ["shenHui", "bai"],        xiuxian: ["kaQi", "miBai"],    xianyan: ["shanHu", "jiuHong"] },
+};
+
+let selectedStyle = "baida";
+let selectedColor = null;
+
+const styleTabs = document.getElementById("styleTabs");
+const mainGrid = document.getElementById("mainGrid");
+const resultCard = document.getElementById("resultCard");
+const placeholder = document.getElementById("placeholder");
+const mainChip = document.getElementById("mainChip");
+const mainName = document.getElementById("mainName");
+const matchList = document.getElementById("matchList");
+
+STYLES.forEach(s => {
+  const btn = document.createElement("button");
+  btn.className = "style-tab" + (s.key === selectedStyle ? " active" : "");
+  btn.textContent = s.label;
+  btn.dataset.key = s.key;
+  btn.addEventListener("click", () => {
+    selectedStyle = s.key;
+    document.querySelectorAll(".style-tab").forEach(el => {
+      el.classList.toggle("active", el.dataset.key === selectedStyle);
+    });
+    if (selectedColor) renderMatches();
+  });
+  styleTabs.appendChild(btn);
+});
+
+MAIN_COLOR_KEYS.forEach(key => {
+  const c = COLORS[key];
+  const btn = document.createElement("button");
+  btn.className = "swatch";
+  btn.dataset.key = key;
+  btn.innerHTML = `<div class="chip" style="background:${c.hex}"></div><span>${c.name}</span>`;
+  btn.addEventListener("click", () => {
+    selectedColor = key;
+    document.querySelectorAll(".swatch").forEach(el => {
+      el.classList.toggle("selected", el.dataset.key === key);
+    });
+    renderMatches();
+  });
+  mainGrid.appendChild(btn);
+});
+
+function renderMatches() {
+  const main = COLORS[selectedColor];
+  mainChip.style.background = main.hex;
+  mainName.textContent = main.name;
+
+  const matchKeys = MATCHES[selectedColor][selectedStyle];
+  matchList.innerHTML = "";
+  matchKeys.forEach(mKey => {
+    const m = COLORS[mKey];
+    const row = document.createElement("div");
+    row.className = "match-item";
+    row.innerHTML = `
+      <div class="chip-md" style="background:${m.hex}"></div>
+      <div>
+        <div class="name">${m.name}</div>
+        <div class="desc">${m.hex.toUpperCase()}</div>
+      </div>
+    `;
+    matchList.appendChild(row);
+  });
+
+  resultCard.classList.add("show");
+  placeholder.style.display = "none";
+}
+</script>
+
+</body>
+</html>
