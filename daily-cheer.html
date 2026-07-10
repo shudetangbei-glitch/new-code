@@ -24,8 +24,22 @@
     padding: 24px 16px 60px;
     min-height: 100vh;
   }
-  .wrap { max-width: 480px; margin: 0 auto; }
+  .wrap { max-width: 480px; margin: 0 auto; position: relative; }
   header { text-align: center; margin-bottom: 20px; }
+  .lang-toggle {
+    display: none;
+    position: absolute;
+    top: 0;
+    right: 0;
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 4px 10px;
+    font-size: 11px;
+    color: var(--muted);
+    font-family: inherit;
+    cursor: pointer;
+  }
   header h1 { font-size: 20px; font-weight: 600; margin: 0 0 4px; }
   header p { font-size: 13px; color: var(--muted); margin: 0; }
 
@@ -212,8 +226,9 @@
 </head>
 <body>
 <div class="wrap">
+  <button id="langToggle" class="lang-toggle"></button>
   <header>
-    <h1>每日暖心话</h1>
+    <h1 id="appTitle">每日暖心话</h1>
     <p id="dateLabel"></p>
   </header>
   <div id="userBar" class="user-bar"></div>
@@ -231,13 +246,108 @@ const LEARNING_RATE = 0.15;
 const MIN_WEIGHT = 0.3;
 const MAX_WEIGHT = 3;
 
-const CATS = {
-  encourage: { label: "鼓励", color: "var(--encourage)" },
-  praise: { label: "赞美", color: "var(--praise)" },
-  care: { label: "关心", color: "var(--care)" },
+const LANG_KEY = "dailyCheerLang_v1";
+let LANG = null;
+
+function t() { return STRINGS[LANG]; }
+function catLabel(key) { return t().cats[key]; }
+
+const CATS_META = {
+  encourage: { color: "var(--encourage)" },
+  praise: { color: "var(--praise)" },
+  care: { color: "var(--care)" },
 };
 
-const POOL = {
+const STRINGS = {
+  zh: {
+    appTitle: "每日暖心话",
+    greeting: { dawn: "夜深了", morning: "早安", noon: "中午好", afternoon: "下午好", evening: "晚上好" },
+    cats: { encourage: "鼓励", praise: "赞美", care: "关心" },
+    yes: "是,说到心里了",
+    no: "否,一般般",
+    submit: "提交今天的感受",
+    doneTitle: "谢谢你的反馈",
+    doneSub: "我已经记下了,会让明天的话更懂你一点。",
+    streak: (n) => `已经陪伴你 <b>${n}</b> 天`,
+    weightsTitle: "学习进度(越长代表越懂你)",
+    historyShow: "查看最近的记录",
+    historyHide: "收起记录",
+    hello: (name) => `你好,<b>${name}</b>`,
+    exportBtn: "导出备份",
+    importBtn: "导入备份",
+    logoutBtn: "退出登录",
+    loginTitle: "登录",
+    registerTitle: "注册新用户",
+    loginSub: "登录后继续你的专属学习进度",
+    registerSub: "创建账号,保存你自己的暖心记录",
+    usernameLabel: "用户名",
+    usernamePlaceholder: "给自己起个名字",
+    passwordLabel: "密码",
+    passwordPlaceholder: "至少4位",
+    loginBtn: "登录",
+    registerBtn: "注册",
+    toggleToRegister: "还没有账号?去注册",
+    toggleToLogin: "已经有账号?去登录",
+    authHint: "数据只保存在这台设备的浏览器里,换设备需要重新注册。",
+    errEmpty: "请输入用户名和密码",
+    errUsernameLen: "用户名至少2个字符",
+    errPasswordLen: "密码至少4位",
+    errDupUser: "用户名已存在,换一个试试",
+    errBadLogin: "用户名或密码不正确",
+    exportFilePrefix: "每日暖心话备份",
+    importConfirm: (from, to) => `确定要用这份备份(来自"${from}")覆盖当前账号"${to}"的数据吗?此操作不可撤销。`,
+    importInvalid: "备份文件无效,无法导入。",
+    unknownUser: "未知用户",
+    langPickTitle: "选择语言 / Choose Language",
+    langPickSub: "选择你想使用的语言 / Pick the language you'd like to use",
+  },
+  en: {
+    appTitle: "Daily Warm Words",
+    greeting: { dawn: "Still up late", morning: "Good morning", noon: "Good midday", afternoon: "Good afternoon", evening: "Good evening" },
+    cats: { encourage: "Encouragement", praise: "Praise", care: "Care" },
+    yes: "Yes, that resonated",
+    no: "Not really",
+    submit: "Submit today's feelings",
+    doneTitle: "Thanks for your feedback",
+    doneSub: "I've noted it down — tomorrow's words will understand you a little better.",
+    streak: (n) => `You've shown up for <b>${n}</b> day${n === 1 ? "" : "s"}`,
+    weightsTitle: "Learning progress (longer bar = better understood)",
+    historyShow: "View recent history",
+    historyHide: "Hide history",
+    hello: (name) => `Hi, <b>${name}</b>`,
+    exportBtn: "Export backup",
+    importBtn: "Import backup",
+    logoutBtn: "Log out",
+    loginTitle: "Log In",
+    registerTitle: "Create an Account",
+    loginSub: "Log in to continue your personalized progress",
+    registerSub: "Create an account to save your own warm words",
+    usernameLabel: "Username",
+    usernamePlaceholder: "Pick a name for yourself",
+    passwordLabel: "Password",
+    passwordPlaceholder: "At least 4 characters",
+    loginBtn: "Log In",
+    registerBtn: "Sign Up",
+    toggleToRegister: "No account yet? Sign up",
+    toggleToLogin: "Already have an account? Log in",
+    authHint: "Your data is only saved in this device's browser — you'll need to sign up again on a different device.",
+    errEmpty: "Please enter a username and password",
+    errUsernameLen: "Username must be at least 2 characters",
+    errPasswordLen: "Password must be at least 4 characters",
+    errDupUser: "That username is taken — try another one",
+    errBadLogin: "Incorrect username or password",
+    exportFilePrefix: "DailyWarmWords_Backup",
+    importConfirm: (from, to) => `Restore this backup (from "${from}") and overwrite the current account "${to}"'s data? This cannot be undone.`,
+    importInvalid: "This backup file is invalid and can't be imported.",
+    unknownUser: "Unknown user",
+    langPickTitle: "选择语言 / Choose Language",
+    langPickSub: "选择你想使用的语言 / Pick the language you'd like to use",
+  },
+};
+
+function pool() { return LANG === "en" ? POOL_EN : POOL_ZH; }
+
+const POOL_ZH = {
   encourage: [
     "你已经很努力了,这份坚持值得被看见。",
     "就算今天进展缓慢,你也一直在往前走。",
@@ -336,6 +446,105 @@ const POOL = {
   ],
 };
 
+const POOL_EN = {
+  encourage: [
+    "You've worked so hard — that persistence deserves to be seen.",
+    "Even if today felt slow, you're still moving forward.",
+    "It's okay to rest when you're tired — you don't have to be strong all the time.",
+    "The way you handle pressure is more mature than you give yourself credit for.",
+    "You didn't give up when things got hard — that alone is remarkable.",
+    "Your effort won't be wasted; time will give you the answer.",
+    "No matter what others say, it's fine to move at your own pace.",
+    "Choosing to start today already beats yesterday's hesitation.",
+    "Some things can't be rushed — you're already doing better than you think.",
+    "You deserve applause for every attempt you make.",
+    "Even a small step forward is real progress.",
+    "You're not carrying this alone — you're stronger than you think.",
+    "It's okay to take it slow; as long as the direction is right, it's never wasted time.",
+    "Today's hard work will become a story you're proud of someday.",
+    "Facing difficulty with seriousness instead of giving up — that's precious.",
+    "You've made it through so many hard days already — today you will too.",
+    "It's okay not to be perfect — you're already living life earnestly.",
+    "You have what it takes to handle today's tasks one by one.",
+    "Your persistence is quietly changing things for the better.",
+    "Effort adds up and eventually blossoms — and you're already on your way.",
+    "Your willingness to try again is a rare kind of courage.",
+    "No need to compare yourself to others — being better than yesterday's you is enough.",
+    "The way you face life is more admirable than you realize.",
+    "Every small act of persistence is remarkable self-discipline.",
+    "You've already done well — give yourself some credit.",
+    "Even in a low moment, you're working to find your footing again — that's brave.",
+    "You don't need to prove anything — you're already trying hard enough.",
+    "Even if today you only got a little done, it still counts.",
+    "That never-give-up spirit of yours has always been there.",
+    "You're becoming a calmer version of yourself — just take your time.",
+  ],
+  praise: [
+    "You're someone who is both gentle and principled.",
+    "That earnestness in you is rare and precious.",
+    "You think things through so thoughtfully — that's a precious quality.",
+    "The way you treat your friends makes people feel at ease.",
+    "You have a sincerity that draws people in.",
+    "Your calmness when handling problems is truly admirable.",
+    "You're the kind of person who follows through — very trustworthy.",
+    "You carry a quiet, unshaken strength.",
+    "Your earnest attitude toward life is genuinely moving.",
+    "You're good at noticing beauty in small things — that ability is precious.",
+    "You have a great sense of boundaries with people, which makes others comfortable.",
+    "You have a unique resilience — not easily knocked down.",
+    "Your attentiveness always seems to help others at just the right moment.",
+    "You have great taste and aesthetic sense, built up over a long time.",
+    "You're someone who thinks of others — that's rare and valuable.",
+    "That composure of yours comes from real experience settling in.",
+    "You're skilled at organizing complicated things into order.",
+    "You have a sense of humor that puts people at ease.",
+    "You hold yourself to high standards — just don't forget to be gentle with yourself too.",
+    "That tenacity of yours makes you feel dependable.",
+    "You express yourself so clearly that your ideas are easy to understand.",
+    "You're a great listener — an underrated ability.",
+    "There's a groundedness to you that puts people at ease.",
+    "Your sensitivity to detail often catches what others overlook.",
+    "You have strong opinions without being stubborn about them.",
+    "That kindness in you easily rubs off on the people around you.",
+    "The way you handle your emotions is more mature than most people's.",
+    "You focus so intently on the things you love — that focus is captivating.",
+    "You have a grounded quality that makes people trust you.",
+    "That passion for life in you has never faded.",
+  ],
+  care: [
+    "Don't forget to eat breakfast today.",
+    "When the weather changes, remember to put on an extra layer.",
+    "If today's been tiring, let yourself rest early.",
+    "However busy work gets, don't forget to drink some water.",
+    "If you're not feeling great, you don't have to force a smile.",
+    "If today brought something frustrating, remember to still take care of yourself.",
+    "When you're tired, it's okay to pause and take a deep breath.",
+    "However busy today is, remember to save a little time for yourself.",
+    "If the pressure feels heavy, it's okay to talk to someone you trust.",
+    "If something feels off today, don't push through — rest when you need to.",
+    "Remember to rest your eyes too — don't stare at the screen the whole time.",
+    "If it rains today, remember to bring an umbrella.",
+    "If today is hard, please be a little more patient with yourself.",
+    "Don't forget to actually eat lunch properly — don't just skip it.",
+    "Whatever happens today, you deserve to be treated well.",
+    "If you feel worn out, resting isn't laziness — it's necessary.",
+    "Remember to move your body a bit — don't stay seated the whole time.",
+    "If your mood dips a little today, that's okay too — it will pass.",
+    "Don't forget to loosen up your shoulders and neck a little.",
+    "Take good care of your body today too.",
+    "If you haven't been sleeping enough, try turning in early tonight.",
+    "Amid the busyness, remember to look up at the sky outside.",
+    "If today feels stressful, give yourself a little buffer time.",
+    "Don't forget to pour yourself a glass of warm water.",
+    "If today was especially tiring, go to bed early tonight.",
+    "When something upsetting comes up, take care of your own feelings first.",
+    "If something's left unfinished today, it's fine to continue tomorrow.",
+    "Remember to give yourself a small reward, even if it's just a drink you love.",
+    "Whether today went smoothly or not, you've worked hard.",
+    "Taking good care of yourself is the most important thing you can do for you.",
+  ],
+};
+
 function todayStr() {
   return new Date().toDateString();
 }
@@ -386,8 +595,9 @@ function saveState(state) {
 function pickSentences(state) {
   const today = todayStr();
   const allEntries = [];
-  Object.keys(POOL).forEach(cat => {
-    POOL[cat].forEach((text, idx) => {
+  const activePool = pool();
+  Object.keys(activePool).forEach(cat => {
+    activePool[cat].forEach((text, idx) => {
       const id = cat + "_" + idx;
       const lastShown = state.lastShown[id];
       const eligible = !lastShown || daysBetween(lastShown, today) >= COOLDOWN_DAYS;
@@ -460,17 +670,53 @@ function applyFeedback(state) {
 const app = document.getElementById("app");
 const userBar = document.getElementById("userBar");
 const dateLabel = document.getElementById("dateLabel");
-const dateStr = new Date().toLocaleDateString("zh-CN", { year: "numeric", month: "long", day: "numeric", weekday: "long" });
-dateLabel.textContent = dateStr;
+const langToggle = document.getElementById("langToggle");
+
+function formattedDate() {
+  return new Date().toLocaleDateString(LANG === "en" ? "en-US" : "zh-CN", { year: "numeric", month: "long", day: "numeric", weekday: "long" });
+}
 
 function timeGreeting() {
   const h = new Date().getHours();
-  if (h < 5) return "夜深了";
-  if (h < 11) return "早安";
-  if (h < 14) return "中午好";
-  if (h < 18) return "下午好";
-  return "晚上好";
+  const g = t().greeting;
+  if (h < 5) return g.dawn;
+  if (h < 11) return g.morning;
+  if (h < 14) return g.noon;
+  if (h < 18) return g.afternoon;
+  return g.evening;
 }
+
+function updateDateLabel() {
+  if (!CURRENT_USER) {
+    dateLabel.textContent = formattedDate();
+    return;
+  }
+  const sep = LANG === "en" ? ", " : ",";
+  dateLabel.textContent = `${timeGreeting()}${sep}${CURRENT_USER} · ${formattedDate()}`;
+}
+
+function applyStaticLangText() {
+  document.documentElement.lang = LANG === "en" ? "en" : "zh-CN";
+  document.title = t().appTitle;
+  document.getElementById("appTitle").textContent = t().appTitle;
+  langToggle.style.display = "inline-block";
+  langToggle.textContent = LANG === "en" ? "中文" : "EN";
+  updateDateLabel();
+}
+
+function toggleLang() {
+  LANG = LANG === "en" ? "zh" : "en";
+  localStorage.setItem(LANG_KEY, LANG);
+  applyStaticLangText();
+  if (CURRENT_USER) {
+    renderUserBar();
+    render();
+  } else {
+    renderAuth();
+  }
+}
+
+langToggle.addEventListener("click", toggleLang);
 
 let state = null;
 
@@ -491,16 +737,16 @@ function renderQuestions() {
   const { items, answers } = state.today;
 
   items.forEach((item, i) => {
-    const cat = CATS[item.cat];
+    const color = CATS_META[item.cat].color;
     const card = document.createElement("div");
     card.className = "card";
-    card.style.setProperty("--tag-color", cat.color);
+    card.style.setProperty("--tag-color", color);
     card.innerHTML = `
-      <div class="tag">${cat.label}</div>
+      <div class="tag">${catLabel(item.cat)}</div>
       <div class="sentence">${item.text}</div>
       <div class="choices">
-        <button class="choice-btn ${answers[i] === true ? "active-yes" : ""}" data-i="${i}" data-v="yes">是,说到心里了</button>
-        <button class="choice-btn ${answers[i] === false ? "active-no" : ""}" data-i="${i}" data-v="no">否,一般般</button>
+        <button class="choice-btn ${answers[i] === true ? "active-yes" : ""}" data-i="${i}" data-v="yes">${t().yes}</button>
+        <button class="choice-btn ${answers[i] === false ? "active-no" : ""}" data-i="${i}" data-v="no">${t().no}</button>
       </div>
     `;
     app.appendChild(card);
@@ -508,7 +754,7 @@ function renderQuestions() {
 
   const submitBtn = document.createElement("button");
   submitBtn.className = "submit-btn";
-  submitBtn.textContent = "提交今天的感受";
+  submitBtn.textContent = t().submit;
   submitBtn.disabled = !answers.every(a => a !== null);
   app.appendChild(submitBtn);
 
@@ -535,9 +781,9 @@ function renderDone() {
   box.className = "done-card";
   box.innerHTML = `
     <div class="emoji">🌱</div>
-    <h2>谢谢你的反馈</h2>
-    <p>我已经记下了,会让明天的话更懂你一点。</p>
-    <div class="streak">已经陪伴你 <b>${state.streak}</b> 天</div>
+    <h2>${t().doneTitle}</h2>
+    <p>${t().doneSub}</p>
+    <div class="streak">${t().streak(state.streak)}</div>
   `;
   app.appendChild(box);
   app.appendChild(renderWeights());
@@ -548,18 +794,18 @@ function renderWeights() {
   const box = document.createElement("div");
   box.className = "weights";
   const title = document.createElement("h3");
-  title.textContent = "学习进度(越长代表越懂你)";
+  title.textContent = t().weightsTitle;
   box.appendChild(title);
 
   const total = Object.values(state.weights).reduce((a, b) => a + b, 0);
-  Object.keys(CATS).forEach(key => {
-    const cat = CATS[key];
+  Object.keys(CATS_META).forEach(key => {
+    const color = CATS_META[key].color;
     const pct = Math.round((state.weights[key] / total) * 100);
     const row = document.createElement("div");
     row.className = "w-row";
     row.innerHTML = `
-      <div class="w-label">${cat.label}</div>
-      <div class="w-track"><div class="w-fill" style="width:${pct}%; background:${cat.color}"></div></div>
+      <div class="w-label">${catLabel(key)}</div>
+      <div class="w-track"><div class="w-fill" style="width:${pct}%; background:${color}"></div></div>
     `;
     box.appendChild(row);
   });
@@ -570,7 +816,7 @@ function renderHistoryToggle() {
   const wrap = document.createElement("div");
   const btn = document.createElement("button");
   btn.className = "history-toggle";
-  btn.textContent = "查看最近的记录";
+  btn.textContent = t().historyShow;
   const list = document.createElement("div");
   list.className = "history";
   list.style.display = "none";
@@ -593,7 +839,7 @@ function renderHistoryToggle() {
 
   btn.addEventListener("click", () => {
     list.style.display = list.style.display === "none" ? "block" : "none";
-    btn.textContent = list.style.display === "none" ? "查看最近的记录" : "收起记录";
+    btn.textContent = list.style.display === "none" ? t().historyShow : t().historyHide;
   });
 
   wrap.appendChild(btn);
@@ -604,10 +850,10 @@ function renderHistoryToggle() {
 function renderUserBar() {
   userBar.style.display = "flex";
   userBar.innerHTML = `
-    <span>你好,<b>${CURRENT_USER}</b></span>
-    <button id="exportBtn">导出备份</button>
-    <button id="importBtn">导入备份</button>
-    <button id="logoutBtn">退出登录</button>
+    <span>${t().hello(CURRENT_USER)}</span>
+    <button id="exportBtn">${t().exportBtn}</button>
+    <button id="importBtn">${t().importBtn}</button>
+    <button id="logoutBtn">${t().logoutBtn}</button>
   `;
   document.getElementById("logoutBtn").addEventListener("click", logout);
   document.getElementById("exportBtn").addEventListener("click", exportBackup);
@@ -628,7 +874,7 @@ function exportBackup() {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = `每日暖心话备份_${CURRENT_USER}_${new Date().toISOString().slice(0, 10)}.json`;
+  a.download = `${t().exportFilePrefix}_${CURRENT_USER}_${new Date().toISOString().slice(0, 10)}.json`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
@@ -643,11 +889,11 @@ function importBackup(file) {
       payload = JSON.parse(reader.result);
       if (!payload || !payload.state || !payload.state.weights) throw new Error("invalid");
     } catch (e) {
-      alert("备份文件无效,无法导入。");
+      alert(t().importInvalid);
       return;
     }
-    const fromUser = payload.username || "未知用户";
-    const ok = confirm(`确定要用这份备份(来自"${fromUser}")覆盖当前账号"${CURRENT_USER}"的数据吗?此操作不可撤销。`);
+    const fromUser = payload.username || t().unknownUser;
+    const ok = confirm(t().importConfirm(fromUser, CURRENT_USER));
     if (!ok) return;
     state = payload.state;
     saveState(state);
@@ -666,7 +912,7 @@ document.getElementById("importFile").addEventListener("change", (e) => {
 function startApp() {
   state = loadState();
   state = ensureToday(state);
-  dateLabel.textContent = `${timeGreeting()},${CURRENT_USER} · ${dateStr}`;
+  updateDateLabel();
   renderUserBar();
   render();
 }
@@ -675,7 +921,7 @@ function logout() {
   CURRENT_USER = null;
   localStorage.removeItem(SESSION_KEY);
   state = null;
-  dateLabel.textContent = dateStr;
+  updateDateLabel();
   userBar.style.display = "none";
   userBar.innerHTML = "";
   renderAuth();
@@ -694,20 +940,20 @@ function renderAuth() {
   const card = document.createElement("div");
   card.className = "auth-card";
   card.innerHTML = `
-    <h2>${authMode === "login" ? "登录" : "注册新用户"}</h2>
-    <p class="auth-sub">${authMode === "login" ? "登录后继续你的专属学习进度" : "创建账号,保存你自己的暖心记录"}</p>
+    <h2>${authMode === "login" ? t().loginTitle : t().registerTitle}</h2>
+    <p class="auth-sub">${authMode === "login" ? t().loginSub : t().registerSub}</p>
     <div class="auth-field">
-      <label>用户名</label>
-      <input type="text" id="authUsername" autocomplete="username" placeholder="给自己起个名字">
+      <label>${t().usernameLabel}</label>
+      <input type="text" id="authUsername" autocomplete="username" placeholder="${t().usernamePlaceholder}">
     </div>
     <div class="auth-field">
-      <label>密码</label>
-      <input type="password" id="authPassword" autocomplete="${authMode === "login" ? "current-password" : "new-password"}" placeholder="至少4位">
+      <label>${t().passwordLabel}</label>
+      <input type="password" id="authPassword" autocomplete="${authMode === "login" ? "current-password" : "new-password"}" placeholder="${t().passwordPlaceholder}">
     </div>
     <div class="auth-error" id="authError"></div>
-    <button class="submit-btn" id="authSubmit">${authMode === "login" ? "登录" : "注册"}</button>
-    <button class="auth-toggle" id="authToggle">${authMode === "login" ? "还没有账号?去注册" : "已经有账号?去登录"}</button>
-    <p class="auth-hint">数据只保存在这台设备的浏览器里,换设备需要重新注册。</p>
+    <button class="submit-btn" id="authSubmit">${authMode === "login" ? t().loginBtn : t().registerBtn}</button>
+    <button class="auth-toggle" id="authToggle">${authMode === "login" ? t().toggleToRegister : t().toggleToLogin}</button>
+    <p class="auth-hint">${t().authHint}</p>
   `;
   app.appendChild(card);
 
@@ -723,15 +969,15 @@ function renderAuth() {
     errorBox.textContent = "";
 
     if (!username || !password) {
-      errorBox.textContent = "请输入用户名和密码";
+      errorBox.textContent = t().errEmpty;
       return;
     }
     if (username.length < 2) {
-      errorBox.textContent = "用户名至少2个字符";
+      errorBox.textContent = t().errUsernameLen;
       return;
     }
     if (password.length < 4) {
-      errorBox.textContent = "密码至少4位";
+      errorBox.textContent = t().errPasswordLen;
       return;
     }
 
@@ -740,7 +986,7 @@ function renderAuth() {
 
     if (authMode === "register") {
       if (users[username]) {
-        errorBox.textContent = "用户名已存在,换一个试试";
+        errorBox.textContent = t().errDupUser;
         return;
       }
       const isFirstUser = Object.keys(users).length === 0;
@@ -753,7 +999,7 @@ function renderAuth() {
       loginAs(username);
     } else {
       if (!users[username] || users[username] !== hash) {
-        errorBox.textContent = "用户名或密码不正确";
+        errorBox.textContent = t().errBadLogin;
         return;
       }
       loginAs(username);
@@ -766,7 +1012,29 @@ function renderAuth() {
   });
 }
 
-function boot() {
+function renderLangPicker() {
+  app.innerHTML = "";
+  const card = document.createElement("div");
+  card.className = "auth-card";
+  card.innerHTML = `
+    <h2>选择语言 / Choose Language</h2>
+    <p class="auth-sub">选择你想使用的语言 / Pick the language you'd like to use</p>
+    <button class="submit-btn" id="pickZh" style="margin-bottom:10px;">中文</button>
+    <button class="submit-btn" id="pickEn">English</button>
+  `;
+  app.appendChild(card);
+  document.getElementById("pickZh").addEventListener("click", () => chooseLang("zh"));
+  document.getElementById("pickEn").addEventListener("click", () => chooseLang("en"));
+}
+
+function chooseLang(lang) {
+  LANG = lang;
+  localStorage.setItem(LANG_KEY, lang);
+  applyStaticLangText();
+  proceedAfterLang();
+}
+
+function proceedAfterLang() {
   const savedUser = localStorage.getItem(SESSION_KEY);
   const users = loadUsers();
   if (savedUser && users[savedUser]) {
@@ -774,6 +1042,17 @@ function boot() {
     startApp();
   } else {
     renderAuth();
+  }
+}
+
+function boot() {
+  const savedLang = localStorage.getItem(LANG_KEY);
+  if (savedLang) {
+    LANG = savedLang;
+    applyStaticLangText();
+    proceedAfterLang();
+  } else {
+    renderLangPicker();
   }
 }
 
