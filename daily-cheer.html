@@ -61,7 +61,42 @@
     font-weight: 600;
     margin-bottom: 10px;
   }
-  .sentence { font-size: 16px; line-height: 1.6; margin-bottom: 14px; }
+  .sentence { font-size: 16px; line-height: 1.6; margin-bottom: 0; }
+
+  .pet-row { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 14px; }
+  .pet { width: 42px; height: 42px; flex-shrink: 0; animation: petBob 2.6s ease-in-out infinite; }
+  .pet svg { width: 100%; height: 100%; display: block; }
+  .pet-ear-fill { fill: color-mix(in srgb, var(--tag-color) 35%, white); }
+  .pet-ear-inner { fill: color-mix(in srgb, var(--tag-color) 55%, white); }
+  .pet-head { fill: color-mix(in srgb, var(--tag-color) 16%, white); stroke: var(--tag-color); stroke-width: 1.5; }
+  .pet-cheek { fill: #ffb3c0; opacity: 0.65; }
+  .pet-eye {
+    fill: #2b2b2b;
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: petBlink 4.2s ease-in-out infinite;
+  }
+  .pet-eye.right { animation-delay: 0.12s; }
+  .pet-mouth { stroke: var(--tag-color); stroke-width: 2; stroke-linecap: round; fill: none; }
+
+  @keyframes petBob {
+    0%, 100% { transform: translateY(0) rotate(-3deg); }
+    50% { transform: translateY(-4px) rotate(3deg); }
+  }
+  @keyframes petBlink {
+    0%, 88%, 100% { transform: scaleY(1); }
+    94% { transform: scaleY(0.12); }
+  }
+
+  .bubble {
+    position: relative;
+    flex: 1;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 4px 14px 14px 14px;
+    padding: 10px 14px;
+  }
+
   .choices { display: flex; gap: 10px; }
   .choice-btn {
     flex: 1;
@@ -733,6 +768,25 @@ function render() {
   }
 }
 
+function petMarkup() {
+  return `
+    <div class="pet">
+      <svg viewBox="0 0 64 64" aria-hidden="true">
+        <circle class="pet-ear-fill" cx="14" cy="16" r="9"></circle>
+        <circle class="pet-ear-fill" cx="50" cy="16" r="9"></circle>
+        <circle class="pet-ear-inner" cx="14" cy="17" r="4"></circle>
+        <circle class="pet-ear-inner" cx="50" cy="17" r="4"></circle>
+        <circle class="pet-head" cx="32" cy="35" r="22"></circle>
+        <ellipse class="pet-eye left" cx="24" cy="33" rx="2.6" ry="3.6"></ellipse>
+        <ellipse class="pet-eye right" cx="40" cy="33" rx="2.6" ry="3.6"></ellipse>
+        <circle class="pet-cheek" cx="19" cy="41" r="3"></circle>
+        <circle class="pet-cheek" cx="45" cy="41" r="3"></circle>
+        <path class="pet-mouth" d="M28 42 Q32 46 36 42"></path>
+      </svg>
+    </div>
+  `;
+}
+
 function renderQuestions() {
   const { items, answers } = state.today;
 
@@ -743,7 +797,10 @@ function renderQuestions() {
     card.style.setProperty("--tag-color", color);
     card.innerHTML = `
       <div class="tag">${catLabel(item.cat)}</div>
-      <div class="sentence">${item.text}</div>
+      <div class="pet-row">
+        ${petMarkup()}
+        <div class="bubble"><div class="sentence">${item.text}</div></div>
+      </div>
       <div class="choices">
         <button class="choice-btn ${answers[i] === true ? "active-yes" : ""}" data-i="${i}" data-v="yes">${t().yes}</button>
         <button class="choice-btn ${answers[i] === false ? "active-no" : ""}" data-i="${i}" data-v="no">${t().no}</button>
