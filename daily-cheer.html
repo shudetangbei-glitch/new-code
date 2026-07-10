@@ -459,7 +459,18 @@ function applyFeedback(state) {
 
 const app = document.getElementById("app");
 const userBar = document.getElementById("userBar");
-document.getElementById("dateLabel").textContent = new Date().toLocaleDateString("zh-CN", { year: "numeric", month: "long", day: "numeric", weekday: "long" });
+const dateLabel = document.getElementById("dateLabel");
+const dateStr = new Date().toLocaleDateString("zh-CN", { year: "numeric", month: "long", day: "numeric", weekday: "long" });
+dateLabel.textContent = dateStr;
+
+function timeGreeting() {
+  const h = new Date().getHours();
+  if (h < 5) return "夜深了";
+  if (h < 11) return "早安";
+  if (h < 14) return "中午好";
+  if (h < 18) return "下午好";
+  return "晚上好";
+}
 
 let state = null;
 
@@ -655,6 +666,7 @@ document.getElementById("importFile").addEventListener("change", (e) => {
 function startApp() {
   state = loadState();
   state = ensureToday(state);
+  dateLabel.textContent = `${timeGreeting()},${CURRENT_USER} · ${dateStr}`;
   renderUserBar();
   render();
 }
@@ -663,6 +675,7 @@ function logout() {
   CURRENT_USER = null;
   localStorage.removeItem(SESSION_KEY);
   state = null;
+  dateLabel.textContent = dateStr;
   userBar.style.display = "none";
   userBar.innerHTML = "";
   renderAuth();
