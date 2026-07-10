@@ -139,6 +139,52 @@
   }
   .history-item .h-date { color: var(--muted); margin-bottom: 6px; font-weight: 600; }
   .history-item div.h-sentence { margin-bottom: 3px; line-height: 1.5; }
+
+  .login-card { max-width: 360px; margin: 24px auto 0; }
+  .auth-tabs { display: flex; gap: 8px; margin-bottom: 16px; }
+  .auth-tab {
+    flex: 1;
+    padding: 8px 0;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    font-size: 13px;
+    font-family: inherit;
+    color: var(--muted);
+    cursor: pointer;
+  }
+  .auth-tab.active { background: #2b2b2b; color: #fff; border-color: #2b2b2b; font-weight: 600; }
+  .login-input {
+    width: 100%;
+    padding: 12px 14px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    font-size: 14px;
+    font-family: inherit;
+    margin-bottom: 10px;
+    background: var(--bg);
+    color: var(--text);
+  }
+  .auth-error { color: #c0392b; font-size: 12px; margin: -2px 0 10px; }
+  .auth-hint { font-size: 11px; color: var(--muted); margin-top: 10px; text-align: center; line-height: 1.5; }
+  .user-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 14px;
+  }
+  .user-bar button {
+    background: none;
+    border: none;
+    color: var(--muted);
+    text-decoration: underline;
+    font-family: inherit;
+    font-size: 12px;
+    cursor: pointer;
+    padding: 0;
+  }
 </style>
 </head>
 <body>
@@ -151,7 +197,8 @@
 </div>
 
 <script>
-const STORAGE_KEY = "dailyCheerState_v2";
+const USERS_KEY = "dailyCheerUsers_v1";
+const CURRENT_USER_KEY = "dailyCheerCurrentUser_v1";
 const COOLDOWN_DAYS = 20;
 const LEARNING_RATE = 0.15;
 const MIN_WEIGHT = 0.3;
@@ -270,233 +317,367 @@ function daysBetween(a, b) {
   return Math.round((new Date(b) - new Date(a)) / 86400000);
 }
 
-function loadState() {
-  const raw = localStorage.getItem(STORAGE_KEY);
+// ---- Accounts (client-side only: no server, so this is basic separation, not real security) ----
+
+function loadUsers() {
+  const raw = localStorage.getItem(USERS_KEY);
   if (raw) {
     try { return JSON.parse(raw); } catch (e) {}
   }
-  return {
-    weights: { encourage: 1, praise: 1, care: 1 },
-    lastShown: {},
-    today: null,
-    streak: 0,
-    lastCompletedDate: null,
-    history: [],
-  };
+  return {};
 }
 
-function saveState(state) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+function saveUsers(users) {
+  localStorage.setItem(USERS_KEY, JSON.stringify(users));
 }
 
-function pickSentences(state) {
-  const today = todayStr();
-  const allEntries = [];
-  Object.keys(POOL).forEach(cat => {
-    POOL[cat].forEach((text, idx) => {
-      const id = cat + "_" + idx;
-      const lastShown = state.lastShown[id];
-      const eligible = !lastShown || daysBetween(lastShown, today) >= COOLDOWN_DAYS;
-      allEntries.push({ id, cat, text, lastShown: lastShown || null, eligible });
-    });
-  });
-
-  const chosen = [];
-  const usedIds = new Set();
-
-  for (let i = 0; i < 3; i++) {
-    let pool = allEntries.filter(e => e.eligible && !usedIds.has(e.id));
-    if (pool.length === 0) {
-      pool = allEntries
-        .filter(e => !usedIds.has(e.id))
-        .sort((a, b) => (a.lastShown || "0") < (b.lastShown || "0") ? -1 : 1);
-    }
-    if (pool.length === 0) break;
-
-    const totalWeight = pool.reduce((sum, e) => sum + state.weights[e.cat], 0);
-    let r = Math.random() * totalWeight;
-    let selected = pool[0];
-    for (const e of pool) {
-      r -= state.weights[e.cat];
-      if (r <= 0) { selected = e; break; }
-    }
-    chosen.push(selected);
-    usedIds.add(selected.id);
-  }
-
-  chosen.forEach(c => { state.lastShown[c.id] = today; });
-  return chosen.map(c => ({ id: c.id, cat: c.cat, text: c.text }));
+function randomSalt() {
+  const arr = new Uint8Array(16);
+  crypto.getRandomValues(arr);
+  return Array.from(arr).map(b => b.toString(16).padStart(2, "0")).join("");
 }
 
-function ensureToday(state) {
-  const today = todayStr();
-  if (!state.today || state.today.date !== today) {
-    const items = pickSentences(state);
-    state.today = { date: today, items, answers: [null, null, null], submitted: false };
-    saveState(state);
-  }
-  return state;
+async function hashPassword(password, salt) {
+  const data = new TextEncoder().encode(salt + ":" + password);
+  const digest = await crypto.subtle.digest("SHA-256", data);
+  return Array.from(new Uint8Array(digest)).map(b => b.toString(16).padStart(2, "0")).join("");
 }
 
-function applyFeedback(state) {
-  const { items, answers } = state.today;
-  items.forEach((item, i) => {
-    const delta = answers[i] ? LEARNING_RATE : -LEARNING_RATE;
-    const next = state.weights[item.cat] + delta;
-    state.weights[item.cat] = Math.min(MAX_WEIGHT, Math.max(MIN_WEIGHT, next));
-  });
-
-  const today = state.today.date;
-  const y = new Date();
-  y.setDate(y.getDate() - 1);
-  const yesterday = y.toDateString();
-  if (state.lastCompletedDate === yesterday) {
-    state.streak += 1;
-  } else if (state.lastCompletedDate !== today) {
-    state.streak = 1;
-  }
-  state.lastCompletedDate = today;
-
-  state.history.unshift({ date: today, items, answers: answers.slice() });
-  state.history = state.history.slice(0, 30);
-
-  saveState(state);
+function getCurrentUser() {
+  return localStorage.getItem(CURRENT_USER_KEY);
 }
 
-let state = loadState();
-state = ensureToday(state);
+function setCurrentUser(username) {
+  localStorage.setItem(CURRENT_USER_KEY, username);
+}
+
+function logout() {
+  localStorage.removeItem(CURRENT_USER_KEY);
+  location.reload();
+}
+
+function stateKey(username) {
+  return "dailyCheerState_v2::" + encodeURIComponent(username);
+}
 
 const app = document.getElementById("app");
 document.getElementById("dateLabel").textContent = new Date().toLocaleDateString("zh-CN", { year: "numeric", month: "long", day: "numeric", weekday: "long" });
 
-function isCompletedToday() {
-  return !!state.today.submitted;
+function renderAuth(mode, errorMsg) {
+  mode = mode || "login";
+  app.innerHTML = `
+    <div class="card login-card">
+      <div class="auth-tabs">
+        <button class="auth-tab ${mode === "login" ? "active" : ""}" data-mode="login">登录</button>
+        <button class="auth-tab ${mode === "register" ? "active" : ""}" data-mode="register">注册新账号</button>
+      </div>
+      <input class="login-input" id="authUsername" placeholder="用户名" autocomplete="username">
+      <input class="login-input" id="authPassword" type="password" placeholder="密码" autocomplete="${mode === "login" ? "current-password" : "new-password"}">
+      ${mode === "register" ? '<input class="login-input" id="authPassword2" type="password" placeholder="确认密码" autocomplete="new-password">' : ""}
+      ${errorMsg ? `<div class="auth-error">${errorMsg}</div>` : ""}
+      <button class="submit-btn" id="authSubmit">${mode === "login" ? "登录" : "注册并登录"}</button>
+      <div class="auth-hint">数据只保存在这台设备的浏览器里,不会同步到其他设备。</div>
+    </div>
+  `;
+
+  app.querySelectorAll(".auth-tab").forEach(tab => {
+    tab.addEventListener("click", () => renderAuth(tab.dataset.mode));
+  });
+
+  document.getElementById("authSubmit").addEventListener("click", () => handleAuthSubmit(mode));
 }
 
-function render() {
-  app.innerHTML = "";
-  if (isCompletedToday()) {
-    renderDone();
+async function handleAuthSubmit(mode) {
+  const username = document.getElementById("authUsername").value.trim();
+  const password = document.getElementById("authPassword").value;
+  const users = loadUsers();
+
+  if (!username || !password) {
+    renderAuth(mode, "用户名和密码都不能为空");
+    return;
+  }
+
+  if (mode === "register") {
+    const password2 = document.getElementById("authPassword2").value;
+    if (password !== password2) {
+      renderAuth(mode, "两次输入的密码不一致");
+      return;
+    }
+    if (password.length < 4) {
+      renderAuth(mode, "密码至少需要 4 位");
+      return;
+    }
+    if (users[username]) {
+      renderAuth(mode, "这个用户名已经被使用了,换一个试试");
+      return;
+    }
+    const salt = randomSalt();
+    const hash = await hashPassword(password, salt);
+    users[username] = { salt, hash };
+    saveUsers(users);
+    setCurrentUser(username);
+    startApp(username);
   } else {
-    renderQuestions();
+    const record = users[username];
+    if (!record) {
+      renderAuth(mode, "用户名不存在,要不要先注册一个?");
+      return;
+    }
+    const hash = await hashPassword(password, record.salt);
+    if (hash !== record.hash) {
+      renderAuth(mode, "密码不对,再试一次");
+      return;
+    }
+    setCurrentUser(username);
+    startApp(username);
   }
 }
 
-function renderQuestions() {
-  const { items, answers } = state.today;
+function startApp(username) {
+  function loadState() {
+    const raw = localStorage.getItem(stateKey(username));
+    if (raw) {
+      try { return JSON.parse(raw); } catch (e) {}
+    }
+    return {
+      weights: { encourage: 1, praise: 1, care: 1 },
+      lastShown: {},
+      today: null,
+      streak: 0,
+      lastCompletedDate: null,
+      history: [],
+    };
+  }
 
-  items.forEach((item, i) => {
-    const cat = CATS[item.cat];
-    const card = document.createElement("div");
-    card.className = "card";
-    card.style.setProperty("--tag-color", cat.color);
-    card.innerHTML = `
-      <div class="tag">${cat.label}</div>
-      <div class="sentence">${item.text}</div>
-      <div class="choices">
-        <button class="choice-btn ${answers[i] === true ? "active-yes" : ""}" data-i="${i}" data-v="yes">是,说到心里了</button>
-        <button class="choice-btn ${answers[i] === false ? "active-no" : ""}" data-i="${i}" data-v="no">否,一般般</button>
-      </div>
-    `;
-    app.appendChild(card);
-  });
+  function saveState(state) {
+    localStorage.setItem(stateKey(username), JSON.stringify(state));
+  }
 
-  const submitBtn = document.createElement("button");
-  submitBtn.className = "submit-btn";
-  submitBtn.textContent = "提交今天的感受";
-  submitBtn.disabled = !answers.every(a => a !== null);
-  app.appendChild(submitBtn);
+  function pickSentences(state) {
+    const today = todayStr();
+    const allEntries = [];
+    Object.keys(POOL).forEach(cat => {
+      POOL[cat].forEach((text, idx) => {
+        const id = cat + "_" + idx;
+        const lastShown = state.lastShown[id];
+        const eligible = !lastShown || daysBetween(lastShown, today) >= COOLDOWN_DAYS;
+        allEntries.push({ id, cat, text, lastShown: lastShown || null, eligible });
+      });
+    });
 
-  app.querySelectorAll(".choice-btn").forEach(btn => {
-    btn.addEventListener("click", () => {
-      const i = parseInt(btn.dataset.i, 10);
-      state.today.answers[i] = btn.dataset.v === "yes";
+    const chosen = [];
+    const usedIds = new Set();
+
+    for (let i = 0; i < 3; i++) {
+      let pool = allEntries.filter(e => e.eligible && !usedIds.has(e.id));
+      if (pool.length === 0) {
+        pool = allEntries
+          .filter(e => !usedIds.has(e.id))
+          .sort((a, b) => (a.lastShown || "0") < (b.lastShown || "0") ? -1 : 1);
+      }
+      if (pool.length === 0) break;
+
+      const totalWeight = pool.reduce((sum, e) => sum + state.weights[e.cat], 0);
+      let r = Math.random() * totalWeight;
+      let selected = pool[0];
+      for (const e of pool) {
+        r -= state.weights[e.cat];
+        if (r <= 0) { selected = e; break; }
+      }
+      chosen.push(selected);
+      usedIds.add(selected.id);
+    }
+
+    chosen.forEach(c => { state.lastShown[c.id] = today; });
+    return chosen.map(c => ({ id: c.id, cat: c.cat, text: c.text }));
+  }
+
+  function ensureToday(state) {
+    const today = todayStr();
+    if (!state.today || state.today.date !== today) {
+      const items = pickSentences(state);
+      state.today = { date: today, items, answers: [null, null, null], submitted: false };
+      saveState(state);
+    }
+    return state;
+  }
+
+  function applyFeedback(state) {
+    const { items, answers } = state.today;
+    items.forEach((item, i) => {
+      const delta = answers[i] ? LEARNING_RATE : -LEARNING_RATE;
+      const next = state.weights[item.cat] + delta;
+      state.weights[item.cat] = Math.min(MAX_WEIGHT, Math.max(MIN_WEIGHT, next));
+    });
+
+    const today = state.today.date;
+    const y = new Date();
+    y.setDate(y.getDate() - 1);
+    const yesterday = y.toDateString();
+    if (state.lastCompletedDate === yesterday) {
+      state.streak += 1;
+    } else if (state.lastCompletedDate !== today) {
+      state.streak = 1;
+    }
+    state.lastCompletedDate = today;
+
+    state.history.unshift({ date: today, items, answers: answers.slice() });
+    state.history = state.history.slice(0, 30);
+
+    saveState(state);
+  }
+
+  let state = loadState();
+  state = ensureToday(state);
+
+  function isCompletedToday() {
+    return !!state.today.submitted;
+  }
+
+  function renderUserBar() {
+    const bar = document.createElement("div");
+    bar.className = "user-bar";
+    bar.innerHTML = `<span>当前用户: ${username}</span>`;
+    const logoutBtn = document.createElement("button");
+    logoutBtn.textContent = "退出登录";
+    logoutBtn.addEventListener("click", logout);
+    bar.appendChild(logoutBtn);
+    return bar;
+  }
+
+  function render() {
+    app.innerHTML = "";
+    app.appendChild(renderUserBar());
+    if (isCompletedToday()) {
+      renderDone();
+    } else {
+      renderQuestions();
+    }
+  }
+
+  function renderQuestions() {
+    const { items, answers } = state.today;
+
+    items.forEach((item, i) => {
+      const cat = CATS[item.cat];
+      const card = document.createElement("div");
+      card.className = "card";
+      card.style.setProperty("--tag-color", cat.color);
+      card.innerHTML = `
+        <div class="tag">${cat.label}</div>
+        <div class="sentence">${item.text}</div>
+        <div class="choices">
+          <button class="choice-btn ${answers[i] === true ? "active-yes" : ""}" data-i="${i}" data-v="yes">是,说到心里了</button>
+          <button class="choice-btn ${answers[i] === false ? "active-no" : ""}" data-i="${i}" data-v="no">否,一般般</button>
+        </div>
+      `;
+      app.appendChild(card);
+    });
+
+    const submitBtn = document.createElement("button");
+    submitBtn.className = "submit-btn";
+    submitBtn.textContent = "提交今天的感受";
+    submitBtn.disabled = !answers.every(a => a !== null);
+    app.appendChild(submitBtn);
+
+    app.querySelectorAll(".choice-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const i = parseInt(btn.dataset.i, 10);
+        state.today.answers[i] = btn.dataset.v === "yes";
+        saveState(state);
+        render();
+      });
+    });
+
+    submitBtn.addEventListener("click", () => {
+      if (!state.today.answers.every(a => a !== null)) return;
+      applyFeedback(state);
+      state.today.submitted = true;
       saveState(state);
       render();
     });
-  });
+  }
 
-  submitBtn.addEventListener("click", () => {
-    if (!state.today.answers.every(a => a !== null)) return;
-    applyFeedback(state);
-    state.today.submitted = true;
-    saveState(state);
-    render();
-  });
-}
-
-function renderDone() {
-  const box = document.createElement("div");
-  box.className = "done-card";
-  box.innerHTML = `
-    <div class="emoji">🌱</div>
-    <h2>谢谢你的反馈</h2>
-    <p>我已经记下了,会让明天的话更懂你一点。</p>
-    <div class="streak">已经陪伴你 <b>${state.streak}</b> 天</div>
-  `;
-  app.appendChild(box);
-  app.appendChild(renderWeights());
-  app.appendChild(renderHistoryToggle());
-}
-
-function renderWeights() {
-  const box = document.createElement("div");
-  box.className = "weights";
-  const title = document.createElement("h3");
-  title.textContent = "学习进度(越长代表越懂你)";
-  box.appendChild(title);
-
-  const total = Object.values(state.weights).reduce((a, b) => a + b, 0);
-  Object.keys(CATS).forEach(key => {
-    const cat = CATS[key];
-    const pct = Math.round((state.weights[key] / total) * 100);
-    const row = document.createElement("div");
-    row.className = "w-row";
-    row.innerHTML = `
-      <div class="w-label">${cat.label}</div>
-      <div class="w-track"><div class="w-fill" style="width:${pct}%; background:${cat.color}"></div></div>
+  function renderDone() {
+    const box = document.createElement("div");
+    box.className = "done-card";
+    box.innerHTML = `
+      <div class="emoji">🌱</div>
+      <h2>谢谢你的反馈</h2>
+      <p>我已经记下了,会让明天的话更懂你一点。</p>
+      <div class="streak">已经陪伴你 <b>${state.streak}</b> 天</div>
     `;
-    box.appendChild(row);
-  });
-  return box;
-}
+    app.appendChild(box);
+    app.appendChild(renderWeights());
+    app.appendChild(renderHistoryToggle());
+  }
 
-function renderHistoryToggle() {
-  const wrap = document.createElement("div");
-  const btn = document.createElement("button");
-  btn.className = "history-toggle";
-  btn.textContent = "查看最近的记录";
-  const list = document.createElement("div");
-  list.className = "history";
-  list.style.display = "none";
+  function renderWeights() {
+    const box = document.createElement("div");
+    box.className = "weights";
+    const title = document.createElement("h3");
+    title.textContent = "学习进度(越长代表越懂你)";
+    box.appendChild(title);
 
-  state.history.slice(0, 7).forEach(h => {
-    const item = document.createElement("div");
-    item.className = "history-item";
-    const dateLine = document.createElement("div");
-    dateLine.className = "h-date";
-    dateLine.textContent = h.date;
-    item.appendChild(dateLine);
-    h.items.forEach((it, i) => {
-      const line = document.createElement("div");
-      line.className = "h-sentence";
-      line.textContent = (h.answers[i] ? "💛 " : "🤍 ") + it.text;
-      item.appendChild(line);
+    const total = Object.values(state.weights).reduce((a, b) => a + b, 0);
+    Object.keys(CATS).forEach(key => {
+      const cat = CATS[key];
+      const pct = Math.round((state.weights[key] / total) * 100);
+      const row = document.createElement("div");
+      row.className = "w-row";
+      row.innerHTML = `
+        <div class="w-label">${cat.label}</div>
+        <div class="w-track"><div class="w-fill" style="width:${pct}%; background:${cat.color}"></div></div>
+      `;
+      box.appendChild(row);
     });
-    list.appendChild(item);
-  });
+    return box;
+  }
 
-  btn.addEventListener("click", () => {
-    list.style.display = list.style.display === "none" ? "block" : "none";
-    btn.textContent = list.style.display === "none" ? "查看最近的记录" : "收起记录";
-  });
+  function renderHistoryToggle() {
+    const wrap = document.createElement("div");
+    const btn = document.createElement("button");
+    btn.className = "history-toggle";
+    btn.textContent = "查看最近的记录";
+    const list = document.createElement("div");
+    list.className = "history";
+    list.style.display = "none";
 
-  wrap.appendChild(btn);
-  wrap.appendChild(list);
-  return wrap;
+    state.history.slice(0, 7).forEach(h => {
+      const item = document.createElement("div");
+      item.className = "history-item";
+      const dateLine = document.createElement("div");
+      dateLine.className = "h-date";
+      dateLine.textContent = h.date;
+      item.appendChild(dateLine);
+      h.items.forEach((it, i) => {
+        const line = document.createElement("div");
+        line.className = "h-sentence";
+        line.textContent = (h.answers[i] ? "💛 " : "🤍 ") + it.text;
+        item.appendChild(line);
+      });
+      list.appendChild(item);
+    });
+
+    btn.addEventListener("click", () => {
+      list.style.display = list.style.display === "none" ? "block" : "none";
+      btn.textContent = list.style.display === "none" ? "查看最近的记录" : "收起记录";
+    });
+
+    wrap.appendChild(btn);
+    wrap.appendChild(list);
+    return wrap;
+  }
+
+  render();
 }
 
-render();
+const existingUser = getCurrentUser();
+if (existingUser) {
+  startApp(existingUser);
+} else {
+  renderAuth("login");
+}
 </script>
 </body>
 </html>
