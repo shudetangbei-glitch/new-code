@@ -70,16 +70,18 @@
   .pet-ear-inner { fill: color-mix(in srgb, var(--tag-color) 55%, white); }
   .pet-head { fill: color-mix(in srgb, var(--tag-color) 16%, white); stroke: var(--tag-color); stroke-width: 1.5; }
   .pet-cheek { fill: #ffb3c0; opacity: 0.65; }
-  .pet-eye {
-    fill: #2b2b2b;
+  .pet-eye-group {
     transform-box: fill-box;
     transform-origin: center;
     animation: petBlink 4.2s ease-in-out infinite;
   }
-  .pet-eye.right { animation-delay: 0.12s; }
+  .pet-eye-group.right { animation-delay: 0.12s; }
+  .pet-eye { fill: #2b2b2b; }
+  .pet-eye-shine { fill: #ffffff; }
   .pet-mouth { stroke: var(--tag-color); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; fill: none; }
   .pet-nose { fill: #ff8fa3; opacity: 0.85; }
   .pet-whisker line { stroke: var(--tag-color); stroke-width: 1; stroke-linecap: round; opacity: 0.55; }
+  .pet-stripe { stroke: color-mix(in srgb, var(--tag-color) 55%, white); stroke-width: 2.5; stroke-linecap: round; fill: none; }
 
   @keyframes petBob {
     0%, 100% { transform: translateY(0) rotate(-3deg); }
@@ -779,22 +781,31 @@ function petMarkup() {
   return `
     <div class="pet">
       <svg viewBox="0 0 64 64" aria-hidden="true">
-        <path class="pet-ear-fill" d="M8 24 L20 5 L28 21 Z"></path>
-        <path class="pet-ear-fill" d="M56 24 L44 5 L36 21 Z"></path>
-        <path class="pet-ear-inner" d="M13 21 L20 10 L24 20 Z"></path>
-        <path class="pet-ear-inner" d="M51 21 L44 10 L40 20 Z"></path>
-        <circle class="pet-head" cx="32" cy="35" r="22"></circle>
-        <ellipse class="pet-eye left" cx="24" cy="33" rx="2.6" ry="3.6"></ellipse>
-        <ellipse class="pet-eye right" cx="40" cy="33" rx="2.6" ry="3.6"></ellipse>
-        <circle class="pet-cheek" cx="19" cy="41" r="3"></circle>
-        <circle class="pet-cheek" cx="45" cy="41" r="3"></circle>
-        <path class="pet-nose" d="M30 38 L34 38 L32 41 Z"></path>
-        <path class="pet-mouth" d="M32 41 Q28 46 23 42 M32 41 Q36 46 41 42"></path>
+        <path class="pet-ear-fill" d="M9 26 Q7 8 21 6 Q28 12 28 22 Z"></path>
+        <path class="pet-ear-fill" d="M55 26 Q57 8 43 6 Q36 12 36 22 Z"></path>
+        <path class="pet-ear-inner" d="M13.5 22 Q13 12 20.5 10.5 Q24 15 24 21 Z"></path>
+        <path class="pet-ear-inner" d="M50.5 22 Q51 12 43.5 10.5 Q40 15 40 21 Z"></path>
+        <circle class="pet-head" cx="32" cy="36" r="22"></circle>
+        <path class="pet-stripe" d="M28 15.5 Q32 13.5 36 15.5 M25 19 Q32 16 39 19"></path>
+        <g class="pet-eye-group left">
+          <circle class="pet-eye" cx="23.5" cy="35" r="4.4"></circle>
+          <circle class="pet-eye-shine" cx="25" cy="33.4" r="1.5"></circle>
+          <circle class="pet-eye-shine" cx="22.2" cy="36.6" r="0.7"></circle>
+        </g>
+        <g class="pet-eye-group right">
+          <circle class="pet-eye" cx="40.5" cy="35" r="4.4"></circle>
+          <circle class="pet-eye-shine" cx="42" cy="33.4" r="1.5"></circle>
+          <circle class="pet-eye-shine" cx="39.2" cy="36.6" r="0.7"></circle>
+        </g>
+        <circle class="pet-cheek" cx="16.5" cy="42" r="3.4"></circle>
+        <circle class="pet-cheek" cx="47.5" cy="42" r="3.4"></circle>
+        <path class="pet-nose" d="M30 41 Q32 40 34 41 Q34 43.5 32 44 Q30 43.5 30 41 Z"></path>
+        <path class="pet-mouth" d="M32 44 Q29.5 47.5 27 45.5 M32 44 Q34.5 47.5 37 45.5"></path>
         <g class="pet-whisker">
-          <line x1="2" y1="36" x2="16" y2="34"></line>
-          <line x1="2" y1="43" x2="16" y2="40"></line>
-          <line x1="48" y1="34" x2="62" y2="36"></line>
-          <line x1="48" y1="40" x2="62" y2="43"></line>
+          <line x1="4" y1="38" x2="14" y2="37"></line>
+          <line x1="4.5" y1="44" x2="14" y2="41.5"></line>
+          <line x1="60" y1="38" x2="50" y2="37"></line>
+          <line x1="59.5" y1="44" x2="50" y2="41.5"></line>
         </g>
       </svg>
     </div>
