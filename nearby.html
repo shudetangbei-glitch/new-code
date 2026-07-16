@@ -379,7 +379,7 @@ function poiCardHtml(poi) {
   const lat = poi.location && poi.location.lat;
   const navUrl = `https://uri.amap.com/navigation?to=${lng},${lat},${encodeURIComponent(poi.name)}&mode=car&policy=1&src=nearby-guide&coordinate=gaode&callnative=1`;
   const detailQuery = [poi.name, poi.address, "大众点评"].filter(Boolean).join(" ");
-  const detailUrl = `https://www.baidu.com/s?wd=${encodeURIComponent(detailQuery)}`;
+  const detailUrl = `https://www.bing.com/search?q=${encodeURIComponent(detailQuery)}`;
   return `
     <div class="poi-card">
       <div class="poi-name">${poi.name}</div>
