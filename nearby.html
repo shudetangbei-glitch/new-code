@@ -153,6 +153,7 @@
   <header>
     <h1>附近推荐</h1>
     <p id="subLabel">吃饭 · 休闲 · 住宿 · 高尔夫,一键导航过去</p>
+    <p id="weatherBadge" style="display:none;"></p>
   </header>
   <div id="app"></div>
 </div>
@@ -259,10 +260,71 @@ const CATEGORIES = [
 
 const app = document.getElementById("app");
 const subLabel = document.getElementById("subLabel");
+const weatherBadge = document.getElementById("weatherBadge");
 
 let userPos = null;
 let activeCat = CATEGORIES[0].id;
 const cache = {}; // { [categoryId]: { status: 'loading'|'loaded'|'error', groups: [{ title, note, pois }] } }
+
+// Dianping city home pages use plain pinyin slugs (confirmed real examples:
+// dianping.com/shanghai, dianping.com/qingdao, dianping.com/suzhou). Whether
+// appending "/search/keyword/0_<keyword>" actually works is NOT verified from
+// this environment (no network access to dianping.com here) - it needs a
+// real-device test. Falls back to a Bing search for any city not listed here.
+const CITY_PINYIN = {
+  "北京": "beijing", "上海": "shanghai", "广州": "guangzhou", "深圳": "shenzhen",
+  "杭州": "hangzhou", "成都": "chengdu", "武汉": "wuhan", "南京": "nanjing",
+  "西安": "xian", "重庆": "chongqing", "天津": "tianjin", "苏州": "suzhou",
+  "厦门": "xiamen", "青岛": "qingdao", "大连": "dalian", "宁波": "ningbo",
+  "无锡": "wuxi", "长沙": "changsha", "郑州": "zhengzhou", "济南": "jinan",
+  "福州": "fuzhou", "合肥": "hefei", "昆明": "kunming", "南昌": "nanchang",
+  "南宁": "nanning", "香港": "hongkong", "珠海": "zhuhai", "佛山": "foshan",
+  "东莞": "dongguan", "惠州": "huizhou",
+};
+
+let userCityPinyin = null;
+let userCityRawName = null;
+
+function resolveCityPinyin(addressComponent) {
+  if (!addressComponent) return null;
+  const cityName = rawCityName(addressComponent);
+  return CITY_PINYIN[cityName] || null;
+}
+
+function rawCityName(addressComponent) {
+  if (!addressComponent) return null;
+  const raw = addressComponent.city || addressComponent.province || "";
+  return raw.replace(/(市|省|自治区|特别行政区)$/, "");
+}
+
+const WEATHER_ICONS = [
+  { match: /雷/, icon: "⛈️" },
+  { match: /雪/, icon: "❄️" },
+  { match: /雨/, icon: "🌧️" },
+  { match: /雾|霾|沙|尘/, icon: "🌫️" },
+  { match: /多云/, icon: "⛅" },
+  { match: /阴/, icon: "☁️" },
+  { match: /晴/, icon: "☀️" },
+];
+
+function weatherIcon(text) {
+  const hit = WEATHER_ICONS.find(w => w.match.test(text || ""));
+  return hit ? hit.icon : "🌤️";
+}
+
+function loadWeather(cityName) {
+  return new Promise((resolve) => {
+    if (!cityName || !window.AMap || !AMap.Weather) { resolve(null); return; }
+    try {
+      const weather = new AMap.Weather();
+      weather.getLive(cityName, (err, data) => {
+        resolve(err ? null : data);
+      });
+    } catch (e) {
+      resolve(null);
+    }
+  });
+}
 
 function amapScriptLoaded() {
   return typeof window.AMap !== "undefined";
@@ -272,7 +334,7 @@ function loadAmapScript() {
   return new Promise((resolve, reject) => {
     if (amapScriptLoaded()) { resolve(); return; }
     const script = document.createElement("script");
-    script.src = `https://webapi.amap.com/maps?v=2.0&key=${AMAP_KEY}&plugin=AMap.Geolocation,AMap.PlaceSearch`;
+    script.src = `https://webapi.amap.com/maps?v=2.0&key=${AMAP_KEY}&plugin=AMap.Geolocation,AMap.PlaceSearch,AMap.Weather`;
     script.onload = () => resolve();
     script.onerror = () => reject(new Error("地图服务加载失败,请检查网络后重试"));
     document.head.appendChild(script);
@@ -294,10 +356,13 @@ function getLocation() {
     const geolocation = new AMap.Geolocation({
       enableHighAccuracy: true,
       timeout: 12000,
+      needAddress: true,
     });
     map.addControl(geolocation);
     geolocation.getCurrentPosition((status, result) => {
       if (status === "complete" && result.position) {
+        userCityPinyin = resolveCityPinyin(result.addressComponent);
+        userCityRawName = rawCityName(result.addressComponent);
         resolve({ lng: result.position.lng, lat: result.position.lat });
       } else {
         reject(new Error((result && result.message) || "定位失败,请确认已开启位置权限"));
@@ -379,7 +444,9 @@ function poiCardHtml(poi) {
   const lat = poi.location && poi.location.lat;
   const navUrl = `https://uri.amap.com/navigation?to=${lng},${lat},${encodeURIComponent(poi.name)}&mode=car&policy=1&src=nearby-guide&coordinate=gaode&callnative=1`;
   const detailQuery = [poi.name, poi.address, "大众点评"].filter(Boolean).join(" ");
-  const detailUrl = `https://www.bing.com/search?q=${encodeURIComponent(detailQuery)}`;
+  const detailUrl = userCityPinyin
+    ? `https://www.dianping.com/${userCityPinyin}/search/keyword/0_${encodeURIComponent(poi.name)}`
+    : `https://cn.bing.com/search?q=${encodeURIComponent(detailQuery)}`;
   return `
     <div class="poi-card">
       <div class="poi-name">${poi.name}</div>
@@ -477,6 +544,18 @@ function renderGate() {
   document.getElementById("startBtn").addEventListener("click", start);
 }
 
+function renderWeather(data) {
+  if (!data) return;
+  weatherBadge.style.display = "block";
+  const icon = weatherIcon(data.weather);
+  const parts = [
+    `${icon} ${data.city || userCityRawName}`,
+    `${data.weather} ${data.temperature}℃`,
+    data.humidity ? `湿度${data.humidity}%` : "",
+  ].filter(Boolean);
+  weatherBadge.textContent = parts.join(" · ");
+}
+
 async function start() {
   const btn = document.getElementById("startBtn");
   const errBox = document.getElementById("gateError");
@@ -489,6 +568,7 @@ async function start() {
     subLabel.textContent = "已定位到你附近,选一个分类看看";
     render();
     loadCategory(activeCat);
+    loadWeather(userCityRawName).then(renderWeather);
   } catch (e) {
     if (btn) { btn.disabled = false; btn.textContent = "重新获取我的位置"; }
     if (errBox) errBox.innerHTML = `<div class="error-box">${e.message || "出了点问题,请重试"}</div>`;
