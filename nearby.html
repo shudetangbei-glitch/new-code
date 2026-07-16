@@ -147,25 +147,6 @@
     text-decoration: none;
   }
 
-  .raw-toggle { margin-top: 10px; }
-  .raw-toggle summary {
-    font-size: 11px;
-    color: var(--muted);
-    cursor: pointer;
-  }
-  .raw-json {
-    font-size: 10px;
-    line-height: 1.5;
-    color: var(--muted);
-    background: var(--bg);
-    border-radius: 8px;
-    padding: 8px;
-    margin-top: 6px;
-    overflow-x: auto;
-    white-space: pre-wrap;
-    word-break: break-all;
-  }
-
   .empty-note, .loading-note {
     font-size: 13px;
     color: var(--muted);
@@ -470,7 +451,6 @@ function poiCardHtml(poi) {
   const navUrl = `https://uri.amap.com/navigation?to=${lng},${lat},${encodeURIComponent(poi.name)}&mode=car&policy=1&src=nearby-guide&coordinate=gaode&callnative=1`;
   const detailQuery = [poi.name, poi.address, "大众点评"].filter(Boolean).join(" ");
   const detailUrl = `https://cn.bing.com/search?q=${encodeURIComponent(detailQuery)}`;
-  const rawJson = escapeHtml(JSON.stringify(poi, null, 2));
 
   const photoUrl = poi.photos && poi.photos[0] && poi.photos[0].url;
   const hours = poi.opentime2 || poi.open_time;
@@ -488,10 +468,6 @@ function poiCardHtml(poi) {
         ${firstTel ? `<a class="tel-btn" href="tel:${firstTel}">📞 拨打</a>` : ""}
         <a class="detail-btn" href="${detailUrl}" target="_blank" rel="noopener">查看详情</a>
       </div>
-      <details class="raw-toggle">
-        <summary>查看原始数据(调试用,看看有没有扫街榜相关字段)</summary>
-        <pre class="raw-json">${rawJson}</pre>
-      </details>
     </div>
   `;
 }
