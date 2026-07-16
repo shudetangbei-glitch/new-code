@@ -1138,6 +1138,21 @@ function boot() {
   }
 }
 
+function refreshIfNewDay() {
+  if (!CURRENT_USER || !state) return;
+  if (state.today.date !== todayStr()) {
+    state = ensureToday(state);
+    updateDateLabel();
+    render();
+  }
+}
+
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") refreshIfNewDay();
+});
+window.addEventListener("focus", refreshIfNewDay);
+window.addEventListener("pageshow", refreshIfNewDay);
+
 boot();
 </script>
 </body>
