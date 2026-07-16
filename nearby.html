@@ -101,10 +101,20 @@
     margin-bottom: 10px;
     box-shadow: 0 2px 10px rgba(0,0,0,0.04);
   }
+  .poi-photo {
+    width: 100%;
+    height: 140px;
+    object-fit: cover;
+    border-radius: 12px;
+    margin-bottom: 10px;
+    display: block;
+    background: var(--bg);
+  }
   .poi-name { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
   .poi-meta { font-size: 12px; color: var(--accent); margin-bottom: 4px; }
+  .poi-hours { font-size: 12px; color: var(--muted); margin-bottom: 4px; }
   .poi-address { font-size: 12px; color: var(--muted); line-height: 1.5; margin-bottom: 10px; }
-  .poi-actions { display: flex; gap: 8px; }
+  .poi-actions { display: flex; gap: 8px; flex-wrap: wrap; }
   .nav-btn {
     display: inline-block;
     font-size: 12px;
@@ -123,6 +133,16 @@
     background: none;
     border: 1px solid var(--accent);
     padding: 6px 13px;
+    border-radius: 999px;
+    text-decoration: none;
+  }
+  .tel-btn {
+    display: inline-block;
+    font-size: 12px;
+    font-weight: 600;
+    color: white;
+    background: var(--accent);
+    padding: 7px 14px;
     border-radius: 999px;
     text-decoration: none;
   }
@@ -438,8 +458,11 @@ function escapeHtml(str) {
 }
 
 function poiCardHtml(poi) {
-  const rating = poi.biz_ext && poi.biz_ext.rating ? `⭐ ${poi.biz_ext.rating}` : "";
-  const cost = poi.biz_ext && poi.biz_ext.cost ? `人均 ¥${poi.biz_ext.cost}` : "暂无价格信息";
+  const bizExt = poi.biz_ext || {};
+  const ratingValue = poi.rating || bizExt.rating;
+  const costValue = poi.cost || bizExt.cost;
+  const rating = ratingValue ? `⭐ ${ratingValue}` : "";
+  const cost = costValue ? `人均 ¥${costValue}` : "暂无价格信息";
   const distText = formatDistance(poi.distance);
   const metaParts = [rating, cost, distText].filter(Boolean);
   const lng = poi.location && poi.location.lng;
@@ -448,13 +471,21 @@ function poiCardHtml(poi) {
   const detailQuery = [poi.name, poi.address, "大众点评"].filter(Boolean).join(" ");
   const detailUrl = `https://cn.bing.com/search?q=${encodeURIComponent(detailQuery)}`;
   const rawJson = escapeHtml(JSON.stringify(poi, null, 2));
+
+  const photoUrl = poi.photos && poi.photos[0] && poi.photos[0].url;
+  const hours = poi.opentime2 || poi.open_time;
+  const firstTel = poi.tel ? poi.tel.split(/[;,]/)[0].trim() : "";
+
   return `
     <div class="poi-card">
+      ${photoUrl ? `<img class="poi-photo" src="${photoUrl}" alt="${escapeHtml(poi.name)}" loading="lazy" onerror="this.remove()">` : ""}
       <div class="poi-name">${poi.name}</div>
       <div class="poi-meta">${metaParts.join(" · ")}</div>
+      ${hours ? `<div class="poi-hours">🕐 ${escapeHtml(hours)}</div>` : ""}
       <div class="poi-address">${poi.address || ""}</div>
       <div class="poi-actions">
         <a class="nav-btn" href="${navUrl}">一键导航</a>
+        ${firstTel ? `<a class="tel-btn" href="tel:${firstTel}">📞 拨打</a>` : ""}
         <a class="detail-btn" href="${detailUrl}" target="_blank" rel="noopener">查看详情</a>
       </div>
       <details class="raw-toggle">
