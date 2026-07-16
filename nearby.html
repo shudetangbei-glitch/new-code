@@ -127,6 +127,25 @@
     text-decoration: none;
   }
 
+  .raw-toggle { margin-top: 10px; }
+  .raw-toggle summary {
+    font-size: 11px;
+    color: var(--muted);
+    cursor: pointer;
+  }
+  .raw-json {
+    font-size: 10px;
+    line-height: 1.5;
+    color: var(--muted);
+    background: var(--bg);
+    border-radius: 8px;
+    padding: 8px;
+    margin-top: 6px;
+    overflow-x: auto;
+    white-space: pre-wrap;
+    word-break: break-all;
+  }
+
   .empty-note, .loading-note {
     font-size: 13px;
     color: var(--muted);
@@ -411,6 +430,13 @@ function selectTab(catId) {
   }
 }
 
+function escapeHtml(str) {
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
 function poiCardHtml(poi) {
   const rating = poi.biz_ext && poi.biz_ext.rating ? `⭐ ${poi.biz_ext.rating}` : "";
   const cost = poi.biz_ext && poi.biz_ext.cost ? `人均 ¥${poi.biz_ext.cost}` : "暂无价格信息";
@@ -421,6 +447,7 @@ function poiCardHtml(poi) {
   const navUrl = `https://uri.amap.com/navigation?to=${lng},${lat},${encodeURIComponent(poi.name)}&mode=car&policy=1&src=nearby-guide&coordinate=gaode&callnative=1`;
   const detailQuery = [poi.name, poi.address, "大众点评"].filter(Boolean).join(" ");
   const detailUrl = `https://cn.bing.com/search?q=${encodeURIComponent(detailQuery)}`;
+  const rawJson = escapeHtml(JSON.stringify(poi, null, 2));
   return `
     <div class="poi-card">
       <div class="poi-name">${poi.name}</div>
@@ -430,6 +457,10 @@ function poiCardHtml(poi) {
         <a class="nav-btn" href="${navUrl}">一键导航</a>
         <a class="detail-btn" href="${detailUrl}" target="_blank" rel="noopener">查看详情</a>
       </div>
+      <details class="raw-toggle">
+        <summary>查看原始数据(调试用,看看有没有扫街榜相关字段)</summary>
+        <pre class="raw-json">${rawJson}</pre>
+      </details>
     </div>
   `;
 }
