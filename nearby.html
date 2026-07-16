@@ -104,6 +104,7 @@
   .poi-name { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
   .poi-meta { font-size: 12px; color: var(--accent); margin-bottom: 4px; }
   .poi-address { font-size: 12px; color: var(--muted); line-height: 1.5; margin-bottom: 10px; }
+  .poi-actions { display: flex; gap: 8px; }
   .nav-btn {
     display: inline-block;
     font-size: 12px;
@@ -111,6 +112,17 @@
     color: white;
     background: #2b2b2b;
     padding: 7px 14px;
+    border-radius: 999px;
+    text-decoration: none;
+  }
+  .detail-btn {
+    display: inline-block;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--accent);
+    background: none;
+    border: 1px solid var(--accent);
+    padding: 6px 13px;
     border-radius: 999px;
     text-decoration: none;
   }
@@ -366,12 +378,17 @@ function poiCardHtml(poi) {
   const lng = poi.location && poi.location.lng;
   const lat = poi.location && poi.location.lat;
   const navUrl = `https://uri.amap.com/navigation?to=${lng},${lat},${encodeURIComponent(poi.name)}&mode=car&policy=1&src=nearby-guide&coordinate=gaode&callnative=1`;
+  const detailQuery = [poi.name, poi.address, "大众点评"].filter(Boolean).join(" ");
+  const detailUrl = `https://www.baidu.com/s?wd=${encodeURIComponent(detailQuery)}`;
   return `
     <div class="poi-card">
       <div class="poi-name">${poi.name}</div>
       <div class="poi-meta">${metaParts.join(" · ")}</div>
       <div class="poi-address">${poi.address || ""}</div>
-      <a class="nav-btn" href="${navUrl}" target="_blank" rel="noopener">一键导航</a>
+      <div class="poi-actions">
+        <a class="nav-btn" href="${navUrl}" target="_blank" rel="noopener">一键导航</a>
+        <a class="detail-btn" href="${detailUrl}" target="_blank" rel="noopener">查看详情</a>
+      </div>
     </div>
   `;
 }
