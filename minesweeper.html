@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>扫雷</title>
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; }
+  html, body { overscroll-behavior-y: none; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: #faf8f5;
+    color: #2b2b2b;
+    padding: 24px 12px 60px;
+    min-height: 100vh;
+  }
+  .wrap { max-width: 480px; margin: 0 auto; }
+  header { text-align: center; margin-bottom: 14px; }
+  header h1 { font-size: 22px; font-weight: 700; margin: 0 0 4px; }
+  header p { font-size: 12px; color: #8a8a8a; margin: 0; }
+
+  .level-row { display: flex; justify-content: center; gap: 8px; margin-bottom: 16px; }
+  .level-btn {
+    padding: 7px 14px;
+    border-radius: 999px;
+    border: 1px solid #e8e3db;
+    background: #ffffff;
+    font-size: 13px;
+    font-family: inherit;
+    color: #2b2b2b;
+    cursor: pointer;
+  }
+  .level-btn.active { background: #c9862f; border-color: #c9862f; color: #fff; font-weight: 600; }
+
+  .frame-outer { display: flex; justify-content: center; }
+  .game-frame {
+    display: inline-block;
+    background: #c0c0c0;
+    padding: 8px;
+    box-shadow: inset -3px -3px 0 0 #7b7b7b, inset 3px 3px 0 0 #ffffff;
+    max-width: 100%;
+  }
+  .hud {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #c0c0c0;
+    box-shadow: inset -2px -2px 0 0 #ffffff, inset 2px 2px 0 0 #7b7b7b;
+    padding: 6px 8px;
+    margin-bottom: 8px;
+  }
+  .counter {
+    background: #000;
+    color: #ff2b2b;
+    font-family: "Courier New", monospace;
+    font-size: 22px;
+    font-weight: 700;
+    padding: 2px 6px;
+    letter-spacing: 2px;
+    min-width: 54px;
+    text-align: center;
+    box-shadow: inset -1px -1px 0 0 #ffffff, inset 1px 1px 0 0 #7b7b7b;
+  }
+  .face-btn {
+    width: 38px;
+    height: 38px;
+    font-size: 20px;
+    background: #c0c0c0;
+    border: none;
+    box-shadow: inset -2px -2px 0 0 #7b7b7b, inset 2px 2px 0 0 #ffffff;
+    cursor: pointer;
+    line-height: 1;
+  }
+  .face-btn:active {
+    box-shadow: inset 1px 1px 0 0 #7b7b7b, inset -1px -1px 0 0 #ffffff;
+  }
+
+  .board-scroll {
+    overflow-x: auto;
+    max-width: 100%;
+    box-shadow: inset -2px -2px 0 0 #ffffff, inset 2px 2px 0 0 #7b7b7b;
+    background: #7b7b7b;
+    padding: 3px;
+  }
+  .board {
+    display: grid;
+    gap: 0;
+    width: max-content;
+  }
+  .msq-cell {
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 15px;
+    font-weight: 700;
+    font-family: "Courier New", monospace;
+    background: #c0c0c0;
+    box-shadow: inset -2px -2px 0 0 #7b7b7b, inset 2px 2px 0 0 #ffffff;
+    cursor: pointer;
+    position: relative;
+  }
+  .msq-cell.revealed {
+    box-shadow: inset -1px -1px 0 0 #9c9c9c, inset 1px 1px 0 0 #9c9c9c;
+    background: #c8c8c8;
+    cursor: default;
+  }
+  .msq-cell.mine-hit { background: #ff2b2b; }
+  .msq-cell.wrong-flag::after {
+    content: "";
+    position: absolute;
+    inset: 4px;
+    background:
+      linear-gradient(45deg, transparent 45%, #ff2b2b 45%, #ff2b2b 55%, transparent 55%),
+      linear-gradient(-45deg, transparent 45%, #ff2b2b 45%, #ff2b2b 55%, transparent 55%);
+  }
+
+  .hint {
+    text-align: center;
+    font-size: 12px;
+    color: #8a8a8a;
+    margin-top: 14px;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>💣 扫雷</h1>
+    <p>经典 Windows 扫雷玩法</p>
+  </header>
+
+  <div class="level-row">
+    <button class="level-btn active" data-level="beginner">初级 9×9</button>
+    <button class="level-btn" data-level="intermediate">中级 16×16</button>
+    <button class="level-btn" data-level="expert">高级 30×16</button>
+  </div>
+
+  <div class="frame-outer">
+    <div class="game-frame">
+      <div class="hud">
+        <div class="counter" id="mineCount">010</div>
+        <button class="face-btn" id="faceBtn">🙂</button>
+        <div class="counter" id="timer">000</div>
+      </div>
+      <div class="board-scroll">
+        <div class="board" id="board"></div>
+      </div>
+    </div>
+  </div>
+
+  <p class="hint">点击翻开 · 长按(手机)或右键(电脑)插旗</p>
+</div>
+
+<script>
+const LEVELS = {
+  beginner: { rows: 9, cols: 9, mines: 10 },
+  intermediate: { rows: 16, cols: 16, mines: 40 },
+  expert: { rows: 16, cols: 30, mines: 99 },
+};
+
+const NUM_COLORS = {
+  1: "#0000ff", 2: "#008000", 3: "#ff0000", 4: "#000080",
+  5: "#800000", 6: "#008080", 7: "#000000", 8: "#808080",
+};
+
+let ROWS, COLS, MINES;
+let grid = [];
+let gameState = "ready"; // ready | playing | won | lost
+let flagCount = 0;
+let firstClick = true;
+let elapsed = 0;
+let timerInterval = null;
+
+const boardEl = document.getElementById("board");
+const mineCountEl = document.getElementById("mineCount");
+const timerEl = document.getElementById("timer");
+const faceBtn = document.getElementById("faceBtn");
+
+function makeGrid() {
+  const g = [];
+  for (let r = 0; r < ROWS; r++) {
+    const row = [];
+    for (let c = 0; c < COLS; c++) {
+      row.push({ mine: false, revealed: false, flagged: false, adj: 0 });
+    }
+    g.push(row);
+  }
+  return g;
+}
+
+function neighbors(r, c) {
+  const result = [];
+  for (let dr = -1; dr <= 1; dr++) {
+    for (let dc = -1; dc <= 1; dc++) {
+      if (dr === 0 && dc === 0) continue;
+      const nr = r + dr, nc = c + dc;
+      if (nr >= 0 && nr < ROWS && nc >= 0 && nc < COLS) result.push([nr, nc]);
+    }
+  }
+  return result;
+}
+
+function placeMines(excludeR, excludeC) {
+  const excluded = new Set([`${excludeR},${excludeC}`, ...neighbors(excludeR, excludeC).map(([r, c]) => `${r},${c}`)]);
+  let placed = 0;
+  while (placed < MINES) {
+    const r = Math.floor(Math.random() * ROWS);
+    const c = Math.floor(Math.random() * COLS);
+    const key = `${r},${c}`;
+    if (excluded.has(key) || grid[r][c].mine) continue;
+    grid[r][c].mine = true;
+    placed++;
+  }
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      if (grid[r][c].mine) continue;
+      grid[r][c].adj = neighbors(r, c).filter(([nr, nc]) => grid[nr][nc].mine).length;
+    }
+  }
+}
+
+function startTimer() {
+  if (timerInterval) return;
+  timerInterval = setInterval(() => {
+    elapsed = Math.min(999, elapsed + 1);
+    updateHud();
+  }, 1000);
+}
+
+function stopTimer() {
+  clearInterval(timerInterval);
+  timerInterval = null;
+}
+
+function floodReveal(r, c) {
+  const stack = [[r, c]];
+  while (stack.length) {
+    const [cr, cc] = stack.pop();
+    const cell = grid[cr][cc];
+    if (cell.revealed || cell.flagged) continue;
+    cell.revealed = true;
+    if (cell.adj === 0 && !cell.mine) {
+      neighbors(cr, cc).forEach(([nr, nc]) => {
+        if (!grid[nr][nc].revealed && !grid[nr][nc].flagged) stack.push([nr, nc]);
+      });
+    }
+  }
+}
+
+function revealAllMines() {
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      if (grid[r][c].mine) grid[r][c].revealed = true;
+    }
+  }
+}
+
+function flagAllMinesOnWin() {
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      if (grid[r][c].mine) grid[r][c].flagged = true;
+    }
+  }
+  flagCount = MINES;
+}
+
+function checkWin() {
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      if (!grid[r][c].mine && !grid[r][c].revealed) return false;
+    }
+  }
+  return true;
+}
+
+function revealCell(r, c) {
+  if (gameState === "won" || gameState === "lost") return;
+  const cell = grid[r][c];
+  if (cell.revealed || cell.flagged) return;
+
+  if (firstClick) {
+    placeMines(r, c);
+    firstClick = false;
+    gameState = "playing";
+    startTimer();
+  }
+
+  if (cell.mine) {
+    cell.revealed = true;
+    gameState = "lost";
+    stopTimer();
+    revealAllMines();
+    render();
+    return;
+  }
+
+  floodReveal(r, c);
+  if (checkWin()) {
+    gameState = "won";
+    stopTimer();
+    flagAllMinesOnWin();
+  }
+  render();
+}
+
+function toggleFlag(r, c) {
+  if (gameState === "won" || gameState === "lost") return;
+  const cell = grid[r][c];
+  if (cell.revealed) return;
+  cell.flagged = !cell.flagged;
+  flagCount += cell.flagged ? 1 : -1;
+  render();
+}
+
+function cellContent(cell) {
+  if (cell.flagged && !cell.revealed) return "🚩";
+  if (!cell.revealed) return "";
+  if (cell.mine) return "💣";
+  if (cell.adj === 0) return "";
+  return String(cell.adj);
+}
+
+function render() {
+  boardEl.style.gridTemplateColumns = `repeat(${COLS}, 28px)`;
+  boardEl.innerHTML = "";
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      const cell = grid[r][c];
+      const div = document.createElement("div");
+      div.className = "msq-cell" + (cell.revealed ? " revealed" : "");
+      if (cell.revealed && cell.mine) div.classList.add("mine-hit");
+      if (gameState === "lost" && cell.flagged && !cell.mine) div.classList.add("wrong-flag");
+      div.textContent = cellContent(cell);
+      if (cell.revealed && !cell.mine && cell.adj > 0) {
+        div.style.color = NUM_COLORS[cell.adj];
+      }
+      div.dataset.r = r;
+      div.dataset.c = c;
+      boardEl.appendChild(div);
+    }
+  }
+  updateHud();
+  updateFace();
+}
+
+function updateHud() {
+  mineCountEl.textContent = String(Math.max(0, MINES - flagCount)).padStart(3, "0");
+  timerEl.textContent = String(elapsed).padStart(3, "0");
+}
+
+function updateFace() {
+  if (gameState === "lost") faceBtn.textContent = "😵";
+  else if (gameState === "won") faceBtn.textContent = "😎";
+  else faceBtn.textContent = "🙂";
+}
+
+function resetGame() {
+  grid = makeGrid();
+  gameState = "ready";
+  flagCount = 0;
+  firstClick = true;
+  elapsed = 0;
+  stopTimer();
+  render();
+}
+
+function setLevel(level) {
+  const cfg = LEVELS[level];
+  ROWS = cfg.rows;
+  COLS = cfg.cols;
+  MINES = cfg.mines;
+  resetGame();
+}
+
+document.querySelectorAll(".level-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".level-btn").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    setLevel(btn.dataset.level);
+  });
+});
+
+faceBtn.addEventListener("click", resetGame);
+
+let longPressTimer = null;
+let longPressTriggered = false;
+let touchMoved = false;
+let touchHandled = false;
+
+boardEl.addEventListener("touchstart", (e) => {
+  const target = e.target.closest(".msq-cell");
+  if (!target) return;
+  touchMoved = false;
+  longPressTriggered = false;
+  longPressTimer = setTimeout(() => {
+    longPressTriggered = true;
+    const r = Number(target.dataset.r), c = Number(target.dataset.c);
+    toggleFlag(r, c);
+    if (navigator.vibrate) navigator.vibrate(15);
+  }, 400);
+}, { passive: true });
+
+boardEl.addEventListener("touchmove", () => {
+  touchMoved = true;
+  clearTimeout(longPressTimer);
+}, { passive: true });
+
+boardEl.addEventListener("touchend", (e) => {
+  clearTimeout(longPressTimer);
+  const target = e.target.closest(".msq-cell");
+  touchHandled = true;
+  setTimeout(() => { touchHandled = false; }, 500);
+  if (longPressTriggered || touchMoved || !target) return;
+  const r = Number(target.dataset.r), c = Number(target.dataset.c);
+  revealCell(r, c);
+}, { passive: true });
+
+boardEl.addEventListener("click", (e) => {
+  if (touchHandled) return;
+  const target = e.target.closest(".msq-cell");
+  if (!target) return;
+  const r = Number(target.dataset.r), c = Number(target.dataset.c);
+  revealCell(r, c);
+});
+
+boardEl.addEventListener("contextmenu", (e) => {
+  e.preventDefault();
+  const target = e.target.closest(".msq-cell");
+  if (!target) return;
+  const r = Number(target.dataset.r), c = Number(target.dataset.c);
+  toggleFlag(r, c);
+});
+
+setLevel("beginner");
+</script>
+</body>
+</html>
