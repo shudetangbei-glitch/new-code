@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>2048</title>
+<style>
+  :root {
+    --bg: #faf8f5;
+    --card: #ffffff;
+    --text: #2b2b2b;
+    --muted: #8a8a8a;
+    --border: #e8e3db;
+    --accent: #c9862f;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    overscroll-behavior: none;
+  }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding: 24px 16px 60px;
+    min-height: 100vh;
+    touch-action: manipulation;
+  }
+  .wrap { max-width: 420px; margin: 0 auto; }
+  header { text-align: center; margin-bottom: 16px; }
+  header h1 { font-size: 26px; font-weight: 700; margin: 0 0 4px; letter-spacing: 1px; }
+  header p { font-size: 13px; color: var(--muted); margin: 0; }
+
+  .score-row { display: flex; gap: 10px; margin-bottom: 16px; }
+  .score-box {
+    flex: 1;
+    background: var(--card);
+    border-radius: 14px;
+    padding: 10px 0;
+    text-align: center;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+  }
+  .score-box .label { font-size: 11px; color: var(--muted); margin-bottom: 2px; }
+  .score-box .value { font-size: 20px; font-weight: 700; }
+  .new-game-btn {
+    padding: 0 18px;
+    border-radius: 14px;
+    border: none;
+    background: #2b2b2b;
+    color: white;
+    font-size: 13px;
+    font-family: inherit;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .board-wrap {
+    position: relative;
+    background: #e4dcc8;
+    border-radius: 16px;
+    padding: 10px;
+    touch-action: none;
+  }
+  .board {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    grid-template-rows: repeat(4, 1fr);
+    gap: 10px;
+    aspect-ratio: 1;
+  }
+  .cell {
+    background: rgba(255,255,255,0.35);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    color: var(--text);
+  }
+  .cell.filled { animation: tilePop 0.12s ease; }
+  @keyframes tilePop {
+    0% { transform: scale(0.82); }
+    100% { transform: scale(1); }
+  }
+
+  .overlay {
+    display: none;
+    position: absolute;
+    inset: 0;
+    background: rgba(250, 248, 245, 0.88);
+    border-radius: 16px;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    text-align: center;
+    padding: 20px;
+  }
+  .overlay h2 { font-size: 22px; margin: 0; }
+  .overlay p { font-size: 13px; color: var(--muted); margin: 0; }
+  .overlay-actions { display: flex; gap: 10px; }
+  .overlay-btn {
+    padding: 10px 18px;
+    border-radius: 999px;
+    border: none;
+    font-size: 13px;
+    font-family: inherit;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .overlay-btn.primary { background: #2b2b2b; color: white; }
+  .overlay-btn.secondary { background: none; border: 1px solid var(--border); color: var(--text); }
+
+  .hint {
+    text-align: center;
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 14px;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>2048</h1>
+    <p>划动合并数字,拼出更大的方块</p>
+  </header>
+
+  <div class="score-row">
+    <div class="score-box">
+      <div class="label">分数</div>
+      <div class="value" id="scoreVal">0</div>
+    </div>
+    <div class="score-box">
+      <div class="label">最高分</div>
+      <div class="value" id="bestVal">0</div>
+    </div>
+    <button class="new-game-btn" id="newGameBtn">新游戏</button>
+  </div>
+
+  <div class="board-wrap" id="boardWrap">
+    <div class="board" id="board"></div>
+    <div class="overlay" id="overlay">
+      <h2 id="overlayTitle">游戏结束</h2>
+      <p id="overlaySub"></p>
+      <div class="overlay-actions" id="overlayActions"></div>
+    </div>
+  </div>
+
+  <p class="hint">手机上下左右划动 · 电脑用方向键</p>
+</div>
+
+<script>
+const SIZE = 4;
+const BEST_KEY = "game2048BestScore_v1";
+
+const TILE_COLORS = {
+  2: "#f7ead1", 4: "#f0dcb0", 8: "#eec583", 16: "#e8a45c",
+  32: "#e08a4b", 64: "#d9713a", 128: "#e0b83f", 256: "#dcae2f",
+  512: "#d6a020", 1024: "#c99418", 2048: "#c9862f",
+};
+
+function tileColor(v) {
+  return TILE_COLORS[v] || "#3a2a1a";
+}
+function tileTextColor(v) {
+  return v <= 4 ? "#7a6a52" : "#ffffff";
+}
+function tileFontSize(v) {
+  const len = String(v).length;
+  if (len <= 2) return "30px";
+  if (len === 3) return "24px";
+  return "19px";
+}
+
+let board = [];
+let score = 0;
+let best = loadBest();
+let gameOver = false;
+let won = false;
+let continueAfterWin = false;
+
+function loadBest() {
+  return Number(localStorage.getItem(BEST_KEY)) || 0;
+}
+function saveBest() {
+  localStorage.setItem(BEST_KEY, String(best));
+}
+
+function emptyBoard() {
+  return Array.from({ length: SIZE }, () => Array(SIZE).fill(0));
+}
+
+function randomEmptyCell(b) {
+  const empties = [];
+  for (let r = 0; r < SIZE; r++) {
+    for (let c = 0; c < SIZE; c++) {
+      if (b[r][c] === 0) empties.push([r, c]);
+    }
+  }
+  if (empties.length === 0) return null;
+  return empties[Math.floor(Math.random() * empties.length)];
+}
+
+function addRandomTile(b) {
+  const cell = randomEmptyCell(b);
+  if (!cell) return false;
+  const [r, c] = cell;
+  b[r][c] = Math.random() < 0.9 ? 2 : 4;
+  return true;
+}
+
+function slideRowLeft(row) {
+  const filtered = row.filter(v => v !== 0);
+  const merged = [];
+  let gained = 0;
+  for (let i = 0; i < filtered.length; i++) {
+    if (i < filtered.length - 1 && filtered[i] === filtered[i + 1]) {
+      const mergedVal = filtered[i] * 2;
+      merged.push(mergedVal);
+      gained += mergedVal;
+      i++;
+    } else {
+      merged.push(filtered[i]);
+    }
+  }
+  while (merged.length < SIZE) merged.push(0);
+  const moved = merged.some((v, i) => v !== row[i]);
+  return { row: merged, gained, moved };
+}
+
+function transpose(b) {
+  const t = emptyBoard();
+  for (let r = 0; r < SIZE; r++) {
+    for (let c = 0; c < SIZE; c++) t[c][r] = b[r][c];
+  }
+  return t;
+}
+
+function reverseRows(b) {
+  return b.map(row => [...row].reverse());
+}
+
+function hasTile(b, val) {
+  return b.some(row => row.includes(val));
+}
+
+function canMove(b) {
+  for (let r = 0; r < SIZE; r++) {
+    for (let c = 0; c < SIZE; c++) {
+      if (b[r][c] === 0) return true;
+      if (c < SIZE - 1 && b[r][c] === b[r][c + 1]) return true;
+      if (r < SIZE - 1 && b[r][c] === b[r + 1][c]) return true;
+    }
+  }
+  return false;
+}
+
+function move(direction) {
+  if (gameOver || (won && !continueAfterWin)) return;
+
+  let gained = 0;
+  let moved = false;
+
+  function processLeft(matrix) {
+    return matrix.map(row => {
+      const res = slideRowLeft(row);
+      if (res.moved) moved = true;
+      gained += res.gained;
+      return res.row;
+    });
+  }
+
+  let b;
+  if (direction === "left") {
+    b = processLeft(board);
+  } else if (direction === "right") {
+    b = reverseRows(processLeft(reverseRows(board)));
+  } else if (direction === "up") {
+    b = transpose(processLeft(transpose(board)));
+  } else {
+    b = transpose(reverseRows(processLeft(reverseRows(transpose(board)))));
+  }
+
+  if (!moved) return;
+
+  board = b;
+  score += gained;
+  if (score > best) best = score;
+  addRandomTile(board);
+
+  if (!won && hasTile(board, 2048)) won = true;
+  if (!canMove(board)) gameOver = true;
+
+  saveBest();
+  render();
+}
+
+function render() {
+  document.getElementById("scoreVal").textContent = score;
+  document.getElementById("bestVal").textContent = best;
+
+  const boardEl = document.getElementById("board");
+  boardEl.innerHTML = "";
+  for (let r = 0; r < SIZE; r++) {
+    for (let c = 0; c < SIZE; c++) {
+      const v = board[r][c];
+      const cell = document.createElement("div");
+      cell.className = "cell" + (v !== 0 ? " filled" : "");
+      if (v !== 0) {
+        cell.textContent = v;
+        cell.style.background = tileColor(v);
+        cell.style.color = tileTextColor(v);
+        cell.style.fontSize = tileFontSize(v);
+      }
+      boardEl.appendChild(cell);
+    }
+  }
+
+  const overlay = document.getElementById("overlay");
+  const overlayTitle = document.getElementById("overlayTitle");
+  const overlaySub = document.getElementById("overlaySub");
+  const overlayActions = document.getElementById("overlayActions");
+
+  if (gameOver) {
+    overlay.style.display = "flex";
+    overlayTitle.textContent = "游戏结束";
+    overlaySub.textContent = `这局拿了 ${score} 分`;
+    overlayActions.innerHTML = `<button class="overlay-btn primary" id="restartBtn">再来一局</button>`;
+    document.getElementById("restartBtn").addEventListener("click", newGame);
+  } else if (won && !continueAfterWin) {
+    overlay.style.display = "flex";
+    overlayTitle.textContent = "达成 2048 !";
+    overlaySub.textContent = "要继续挑战更高分吗?";
+    overlayActions.innerHTML = `
+      <button class="overlay-btn secondary" id="continueBtn">继续玩</button>
+      <button class="overlay-btn primary" id="restartBtn">再来一局</button>
+    `;
+    document.getElementById("continueBtn").addEventListener("click", () => {
+      continueAfterWin = true;
+      render();
+    });
+    document.getElementById("restartBtn").addEventListener("click", newGame);
+  } else {
+    overlay.style.display = "none";
+  }
+}
+
+function newGame() {
+  board = emptyBoard();
+  score = 0;
+  gameOver = false;
+  won = false;
+  continueAfterWin = false;
+  addRandomTile(board);
+  addRandomTile(board);
+  render();
+}
+
+document.getElementById("newGameBtn").addEventListener("click", newGame);
+
+document.addEventListener("keydown", (e) => {
+  const map = { ArrowLeft: "left", ArrowRight: "right", ArrowUp: "up", ArrowDown: "down" };
+  if (map[e.key]) {
+    e.preventDefault();
+    move(map[e.key]);
+  }
+});
+
+const boardWrap = document.getElementById("boardWrap");
+let touchStartX = 0;
+let touchStartY = 0;
+
+boardWrap.addEventListener("touchstart", (e) => {
+  touchStartX = e.touches[0].clientX;
+  touchStartY = e.touches[0].clientY;
+}, { passive: true });
+
+boardWrap.addEventListener("touchmove", (e) => {
+  e.preventDefault();
+}, { passive: false });
+
+boardWrap.addEventListener("touchend", (e) => {
+  const dx = e.changedTouches[0].clientX - touchStartX;
+  const dy = e.changedTouches[0].clientY - touchStartY;
+  const absX = Math.abs(dx);
+  const absY = Math.abs(dy);
+  const THRESHOLD = 24;
+  if (Math.max(absX, absY) < THRESHOLD) return;
+  if (absX > absY) {
+    move(dx > 0 ? "right" : "left");
+  } else {
+    move(dy > 0 ? "down" : "up");
+  }
+}, { passive: true });
+
+newGame();
+</script>
+</body>
+</html>
