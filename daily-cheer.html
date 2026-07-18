@@ -271,7 +271,6 @@
     <p id="dateLabel"></p>
   </header>
   <div id="userBar" class="user-bar"></div>
-  <input type="file" id="importFile" accept="application/json" style="display:none">
   <div id="app"></div>
 </div>
 
@@ -313,8 +312,6 @@ const STRINGS = {
     historyShow: "查看最近的记录",
     historyHide: "收起记录",
     hello: (name) => `你好,<b>${name}</b>`,
-    exportBtn: "导出备份",
-    importBtn: "导入备份",
     logoutBtn: "退出登录",
     loginTitle: "登录",
     registerTitle: "注册新用户",
@@ -334,10 +331,6 @@ const STRINGS = {
     errPasswordLen: "密码至少4位",
     errDupUser: "用户名已存在,换一个试试",
     errBadLogin: "用户名或密码不正确",
-    exportFilePrefix: "每日暖心话备份",
-    importConfirm: (from, to) => `确定要用这份备份(来自"${from}")覆盖当前账号"${to}"的数据吗?此操作不可撤销。`,
-    importInvalid: "备份文件无效,无法导入。",
-    unknownUser: "未知用户",
     langPickTitle: "选择语言 / Choose Language",
     langPickSub: "选择你想使用的语言 / Pick the language you'd like to use",
   },
@@ -355,8 +348,6 @@ const STRINGS = {
     historyShow: "View recent history",
     historyHide: "Hide history",
     hello: (name) => `Hi, <b>${name}</b>`,
-    exportBtn: "Export backup",
-    importBtn: "Import backup",
     logoutBtn: "Log out",
     loginTitle: "Log In",
     registerTitle: "Create an Account",
@@ -376,10 +367,6 @@ const STRINGS = {
     errPasswordLen: "Password must be at least 4 characters",
     errDupUser: "That username is taken — try another one",
     errBadLogin: "Incorrect username or password",
-    exportFilePrefix: "DailyWarmWords_Backup",
-    importConfirm: (from, to) => `Restore this backup (from "${from}") and overwrite the current account "${to}"'s data? This cannot be undone.`,
-    importInvalid: "This backup file is invalid and can't be imported.",
-    unknownUser: "Unknown user",
     langPickTitle: "选择语言 / Choose Language",
     langPickSub: "选择你想使用的语言 / Pick the language you'd like to use",
   },
@@ -761,13 +748,8 @@ function applyFeedback(state) {
   });
 
   const today = state.today.date;
-  const y = new Date();
-  y.setDate(y.getDate() - 1);
-  const yesterday = y.toDateString();
-  if (state.lastCompletedDate === yesterday) {
+  if (state.lastCompletedDate !== today) {
     state.streak += 1;
-  } else if (state.lastCompletedDate !== today) {
-    state.streak = 1;
   }
   state.lastCompletedDate = today;
 
@@ -1002,63 +984,10 @@ function renderUserBar() {
   userBar.style.display = "flex";
   userBar.innerHTML = `
     <span>${t().hello(CURRENT_USER)}</span>
-    <button id="exportBtn">${t().exportBtn}</button>
-    <button id="importBtn">${t().importBtn}</button>
     <button id="logoutBtn">${t().logoutBtn}</button>
   `;
   document.getElementById("logoutBtn").addEventListener("click", logout);
-  document.getElementById("exportBtn").addEventListener("click", exportBackup);
-  document.getElementById("importBtn").addEventListener("click", () => {
-    document.getElementById("importFile").click();
-  });
 }
-
-function exportBackup() {
-  const payload = {
-    app: "dailyCheer",
-    version: 2,
-    username: CURRENT_USER,
-    exportedAt: new Date().toISOString(),
-    state,
-  };
-  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `${t().exportFilePrefix}_${CURRENT_USER}_${new Date().toISOString().slice(0, 10)}.json`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-}
-
-function importBackup(file) {
-  const reader = new FileReader();
-  reader.onload = async () => {
-    let payload;
-    try {
-      payload = JSON.parse(reader.result);
-      if (!payload || !payload.state || !payload.state.weights) throw new Error("invalid");
-    } catch (e) {
-      alert(t().importInvalid);
-      return;
-    }
-    const fromUser = payload.username || t().unknownUser;
-    const ok = confirm(t().importConfirm(fromUser, CURRENT_USER));
-    if (!ok) return;
-    state = payload.state;
-    await saveState(state);
-    state = await ensureToday(state);
-    render();
-  };
-  reader.readAsText(file);
-}
-
-document.getElementById("importFile").addEventListener("change", (e) => {
-  const file = e.target.files[0];
-  if (file) importBackup(file);
-  e.target.value = "";
-});
 
 async function startApp(initialState) {
   state = initialState || defaultState();
