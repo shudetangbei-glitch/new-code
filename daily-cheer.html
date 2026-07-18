@@ -275,6 +275,7 @@
   <div id="app"></div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 const STATE_KEY_PREFIX = "dailyCheerState_v2_";
 const LEGACY_STATE_KEY = "dailyCheerState_v2";
@@ -327,7 +328,7 @@ const STRINGS = {
     registerBtn: "注册",
     toggleToRegister: "还没有账号?去注册",
     toggleToLogin: "已经有账号?去登录",
-    authHint: "数据只保存在这台设备的浏览器里,换设备需要重新注册。",
+    authHint: "同一个账号在任何设备上登录都是同一份数据。",
     errEmpty: "请输入用户名和密码",
     errUsernameLen: "用户名至少2个字符",
     errPasswordLen: "密码至少4位",
@@ -369,7 +370,7 @@ const STRINGS = {
     registerBtn: "Sign Up",
     toggleToRegister: "No account yet? Sign up",
     toggleToLogin: "Already have an account? Log in",
-    authHint: "Your data is only saved in this device's browser — you'll need to sign up again on a different device.",
+    authHint: "The same account shows the same data no matter which device you log in from.",
     errEmpty: "Please enter a username and password",
     errUsernameLen: "Username must be at least 2 characters",
     errPasswordLen: "Password must be at least 4 characters",
@@ -594,29 +595,18 @@ function daysBetween(a, b) {
 
 let CURRENT_USER = null;
 
-function loadUsers() {
-  const raw = localStorage.getItem(USERS_KEY);
-  if (raw) {
-    try { return JSON.parse(raw); } catch (e) {}
+const SUPABASE_URL = "https://jgfixbzsnblfcomjmxuc.supabase.co";
+const SUPABASE_KEY = "sb_publishable_trShHiFmgx3kTz_1kZPKqQ_qzMbAQnl";
+
+let sbClient = null;
+function getClient() {
+  if (!sbClient && window.supabase) {
+    sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
   }
-  return {};
+  return sbClient;
 }
 
-function saveUsers(users) {
-  localStorage.setItem(USERS_KEY, JSON.stringify(users));
-}
-
-async function hashPassword(username, password) {
-  const data = new TextEncoder().encode("dailyCheer::" + username + "::" + password);
-  const buf = await crypto.subtle.digest("SHA-256", data);
-  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, "0")).join("");
-}
-
-function loadState() {
-  const raw = localStorage.getItem(STATE_KEY_PREFIX + CURRENT_USER);
-  if (raw) {
-    try { return JSON.parse(raw); } catch (e) {}
-  }
+function defaultState() {
   return {
     weights: { encourage: 1, praise: 1, care: 1 },
     lastShown: {},
@@ -627,8 +617,89 @@ function loadState() {
   };
 }
 
-function saveState(state) {
-  localStorage.setItem(STATE_KEY_PREFIX + CURRENT_USER, JSON.stringify(state));
+// Only used to migrate accounts created before this app moved from
+// localStorage-only accounts to a shared Supabase-backed database.
+function loadLegacyUsers() {
+  const raw = localStorage.getItem(USERS_KEY);
+  if (raw) {
+    try { return JSON.parse(raw); } catch (e) {}
+  }
+  return {};
+}
+
+async function migrateLegacyAccountIfNeeded(username) {
+  const legacyHash = loadLegacyUsers()[username];
+  if (!legacyHash) return null;
+  const legacyStateRaw = localStorage.getItem(STATE_KEY_PREFIX + username);
+  let legacyState = defaultState();
+  if (legacyStateRaw) {
+    try { legacyState = JSON.parse(legacyStateRaw); } catch (e) {}
+  }
+  const insertResult = await insertUserRow(username, legacyHash, legacyState);
+  if (insertResult.error) return { error: insertResult.error };
+  return { data: { username, password_hash: legacyHash, state: legacyState } };
+}
+
+async function hashPassword(username, password) {
+  const data = new TextEncoder().encode("dailyCheer::" + username + "::" + password);
+  const buf = await crypto.subtle.digest("SHA-256", data);
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, "0")).join("");
+}
+
+async function fetchUserRow(username) {
+  const client = getClient();
+  if (!client) return { error: "网络连接失败,请检查网络" };
+  const { data, error } = await client
+    .from("daily_cheer_users")
+    .select("username,password_hash,state")
+    .eq("username", username)
+    .maybeSingle();
+  if (error) return { error: error.message };
+  return { data };
+}
+
+async function insertUserRow(username, passwordHash, initialState) {
+  const client = getClient();
+  if (!client) return { error: "网络连接失败,请检查网络" };
+  const { error } = await client
+    .from("daily_cheer_users")
+    .insert({ username, password_hash: passwordHash, state: initialState });
+  if (error) return { error: error.message };
+  return { ok: true };
+}
+
+async function saveState(state) {
+  if (!CURRENT_USER) return;
+  const client = getClient();
+  if (!client) {
+    showSyncError("网络连接失败,这次改动暂时只保存在本设备");
+    return;
+  }
+  const { error } = await client
+    .from("daily_cheer_users")
+    .update({ state, updated_at: new Date().toISOString() })
+    .eq("username", CURRENT_USER);
+  if (error) {
+    showSyncError("同步失败: " + error.message);
+  } else {
+    clearSyncError();
+  }
+}
+
+function showSyncError(message) {
+  let el = document.getElementById("syncError");
+  if (!el) {
+    el = document.createElement("div");
+    el.id = "syncError";
+    el.style.cssText = "font-size:11px;color:#c0392b;text-align:center;margin:-8px 0 12px;";
+    userBar.insertAdjacentElement("afterend", el);
+  }
+  el.textContent = message;
+}
+
+function clearSyncError() {
+  const el = document.getElementById("syncError");
+  if (el) el.remove();
 }
 
 function pickSentences(state) {
@@ -671,12 +742,12 @@ function pickSentences(state) {
   return chosen.map(c => ({ id: c.id, cat: c.cat, text: c.text }));
 }
 
-function ensureToday(state) {
+async function ensureToday(state) {
   const today = todayStr();
   if (!state.today || state.today.date !== today) {
     const items = pickSentences(state);
     state.today = { date: today, items, answers: [null, null, null], submitted: false };
-    saveState(state);
+    await saveState(state);
   }
   return state;
 }
@@ -702,8 +773,6 @@ function applyFeedback(state) {
 
   state.history.unshift({ date: today, items, answers: answers.slice() });
   state.history = state.history.slice(0, 30);
-
-  saveState(state);
 }
 
 const app = document.getElementById("app");
@@ -841,20 +910,20 @@ function renderQuestions() {
   app.appendChild(submitBtn);
 
   app.querySelectorAll(".choice-btn").forEach(btn => {
-    btn.addEventListener("click", () => {
+    btn.addEventListener("click", async () => {
       const i = parseInt(btn.dataset.i, 10);
       state.today.answers[i] = btn.dataset.v === "yes";
-      saveState(state);
       render();
+      await saveState(state);
     });
   });
 
-  submitBtn.addEventListener("click", () => {
+  submitBtn.addEventListener("click", async () => {
     if (!state.today.answers.every(a => a !== null)) return;
     applyFeedback(state);
     state.today.submitted = true;
-    saveState(state);
     render();
+    await saveState(state);
   });
 }
 
@@ -965,7 +1034,7 @@ function exportBackup() {
 
 function importBackup(file) {
   const reader = new FileReader();
-  reader.onload = () => {
+  reader.onload = async () => {
     let payload;
     try {
       payload = JSON.parse(reader.result);
@@ -978,8 +1047,8 @@ function importBackup(file) {
     const ok = confirm(t().importConfirm(fromUser, CURRENT_USER));
     if (!ok) return;
     state = payload.state;
-    saveState(state);
-    state = ensureToday(state);
+    await saveState(state);
+    state = await ensureToday(state);
     render();
   };
   reader.readAsText(file);
@@ -991,9 +1060,9 @@ document.getElementById("importFile").addEventListener("change", (e) => {
   e.target.value = "";
 });
 
-function startApp() {
-  state = loadState();
-  state = ensureToday(state);
+async function startApp(initialState) {
+  state = initialState || defaultState();
+  state = await ensureToday(state);
   updateDateLabel();
   renderUserBar();
   render();
@@ -1003,16 +1072,17 @@ function logout() {
   CURRENT_USER = null;
   localStorage.removeItem(SESSION_KEY);
   state = null;
+  clearSyncError();
   updateDateLabel();
   userBar.style.display = "none";
   userBar.innerHTML = "";
   renderAuth();
 }
 
-function loginAs(username) {
+async function loginAs(username, initialState) {
   CURRENT_USER = username;
   localStorage.setItem(SESSION_KEY, username);
-  startApp();
+  await startApp(initialState);
 }
 
 let authMode = "login";
@@ -1048,6 +1118,7 @@ function renderAuth() {
     const username = document.getElementById("authUsername").value.trim();
     const password = document.getElementById("authPassword").value;
     const errorBox = document.getElementById("authError");
+    const submitBtn = document.getElementById("authSubmit");
     errorBox.textContent = "";
 
     if (!username || !password) {
@@ -1063,28 +1134,51 @@ function renderAuth() {
       return;
     }
 
-    const users = loadUsers();
+    submitBtn.disabled = true;
     const hash = await hashPassword(username, password);
 
     if (authMode === "register") {
-      if (users[username]) {
+      const existing = await fetchUserRow(username);
+      if (existing.error) {
+        errorBox.textContent = existing.error;
+        submitBtn.disabled = false;
+        return;
+      }
+      if (existing.data) {
         errorBox.textContent = t().errDupUser;
+        submitBtn.disabled = false;
         return;
       }
-      const isFirstUser = Object.keys(users).length === 0;
-      users[username] = hash;
-      saveUsers(users);
-      if (isFirstUser) {
-        const legacy = localStorage.getItem(LEGACY_STATE_KEY);
-        if (legacy) localStorage.setItem(STATE_KEY_PREFIX + username, legacy);
+      const legacy = localStorage.getItem(LEGACY_STATE_KEY);
+      let initialState = defaultState();
+      if (legacy) {
+        try { initialState = JSON.parse(legacy); } catch (e) {}
+        localStorage.removeItem(LEGACY_STATE_KEY);
       }
-      loginAs(username);
+      const insertResult = await insertUserRow(username, hash, initialState);
+      if (insertResult.error) {
+        errorBox.textContent = insertResult.error;
+        submitBtn.disabled = false;
+        return;
+      }
+      await loginAs(username, initialState);
     } else {
-      if (!users[username] || users[username] !== hash) {
-        errorBox.textContent = t().errBadLogin;
+      let result = await fetchUserRow(username);
+      if (!result.error && !result.data) {
+        const migrated = await migrateLegacyAccountIfNeeded(username);
+        if (migrated) result = migrated;
+      }
+      if (result.error) {
+        errorBox.textContent = result.error;
+        submitBtn.disabled = false;
         return;
       }
-      loginAs(username);
+      if (!result.data || result.data.password_hash !== hash) {
+        errorBox.textContent = t().errBadLogin;
+        submitBtn.disabled = false;
+        return;
+      }
+      await loginAs(username, result.data.state || defaultState());
     }
   };
 
@@ -1116,15 +1210,54 @@ function chooseLang(lang) {
   proceedAfterLang();
 }
 
-function proceedAfterLang() {
-  const savedUser = localStorage.getItem(SESSION_KEY);
-  const users = loadUsers();
-  if (savedUser && users[savedUser]) {
-    CURRENT_USER = savedUser;
-    startApp();
-  } else {
+function renderResuming(username) {
+  app.innerHTML = "";
+  const card = document.createElement("div");
+  card.className = "auth-card";
+  card.innerHTML = `<p class="auth-sub" style="margin:0;">${LANG === "en" ? `Signing back in as ${username}…` : `正在恢复 ${username} 的登录状态…`}</p>`;
+  app.appendChild(card);
+}
+
+function renderResumeError(username, message) {
+  app.innerHTML = "";
+  const card = document.createElement("div");
+  card.className = "auth-card";
+  card.innerHTML = `
+    <p class="auth-error" style="margin:0 0 14px;text-align:center;">${LANG === "en" ? "Couldn't sign back in: " : "恢复登录失败: "}${message}</p>
+    <button class="submit-btn" id="retryResumeBtn">${LANG === "en" ? "Retry" : "重试"}</button>
+    <button class="auth-toggle" id="switchAccountBtn">${LANG === "en" ? "Use a different account" : "换个账号登录"}</button>
+  `;
+  app.appendChild(card);
+  document.getElementById("retryResumeBtn").addEventListener("click", proceedAfterLang);
+  document.getElementById("switchAccountBtn").addEventListener("click", () => {
+    localStorage.removeItem(SESSION_KEY);
     renderAuth();
+  });
+}
+
+async function proceedAfterLang() {
+  const savedUser = localStorage.getItem(SESSION_KEY);
+  if (!savedUser) {
+    renderAuth();
+    return;
   }
+  renderResuming(savedUser);
+  let result = await fetchUserRow(savedUser);
+  if (!result.error && !result.data) {
+    const migrated = await migrateLegacyAccountIfNeeded(savedUser);
+    if (migrated) result = migrated;
+  }
+  if (result.error) {
+    renderResumeError(savedUser, result.error);
+    return;
+  }
+  if (!result.data) {
+    localStorage.removeItem(SESSION_KEY);
+    renderAuth();
+    return;
+  }
+  CURRENT_USER = savedUser;
+  await startApp(result.data.state || defaultState());
 }
 
 function boot() {
@@ -1138,10 +1271,10 @@ function boot() {
   }
 }
 
-function refreshIfNewDay() {
+async function refreshIfNewDay() {
   if (!CURRENT_USER || !state) return;
   if (state.today.date !== todayStr()) {
-    state = ensureToday(state);
+    state = await ensureToday(state);
     updateDateLabel();
     render();
   }
