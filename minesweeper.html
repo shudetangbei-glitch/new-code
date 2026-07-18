@@ -410,7 +410,10 @@ document.querySelectorAll(".level-btn").forEach(btn => {
   });
 });
 
-faceBtn.addEventListener("click", resetGame);
+faceBtn.addEventListener("click", () => {
+  if (gameState === "playing" && !confirm("确定要重新开始吗?当前进度会丢失。")) return;
+  resetGame();
+});
 
 let flagMode = false;
 const flagModeBtn = document.getElementById("flagModeBtn");
