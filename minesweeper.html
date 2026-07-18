@@ -304,6 +304,8 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
+(function () {
+"use strict";
 const LEVELS = {
   beginner: { rows: 9, cols: 9, mines: 10 },
   intermediate: { rows: 16, cols: 16, mines: 40 },
@@ -716,6 +718,7 @@ boardEl.addEventListener("contextmenu", (e) => {
 });
 
 setLevel("beginner");
+})();
 </script>
 </body>
 </html>
