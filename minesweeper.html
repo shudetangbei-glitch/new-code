@@ -82,6 +82,26 @@
     box-shadow: inset 1px 1px 0 0 #7b7b7b, inset -1px -1px 0 0 #ffffff;
   }
 
+  .flag-mode-btn {
+    display: block;
+    width: 100%;
+    margin-bottom: 8px;
+    padding: 8px 0;
+    font-size: 13px;
+    font-weight: 600;
+    font-family: inherit;
+    background: #c0c0c0;
+    border: none;
+    box-shadow: inset -2px -2px 0 0 #7b7b7b, inset 2px 2px 0 0 #ffffff;
+    cursor: pointer;
+    color: #2b2b2b;
+  }
+  .flag-mode-btn.active {
+    box-shadow: inset 1px 1px 0 0 #7b7b7b, inset -1px -1px 0 0 #ffffff;
+    background: #e8a45c;
+    color: #fff;
+  }
+
   .board-scroll {
     overflow-x: auto;
     max-width: 100%;
@@ -151,13 +171,14 @@
         <button class="face-btn" id="faceBtn">🙂</button>
         <div class="counter" id="timer">000</div>
       </div>
+      <button class="flag-mode-btn" id="flagModeBtn">🚩 插旗模式:关</button>
       <div class="board-scroll">
         <div class="board" id="board"></div>
       </div>
     </div>
   </div>
 
-  <p class="hint">点击翻开 · 长按(手机)或右键(电脑)插旗</p>
+  <p class="hint">点击翻开 · 手机开启"插旗模式"后点格子插旗 · 电脑右键直接插旗</p>
 </div>
 
 <script>
@@ -391,37 +412,40 @@ document.querySelectorAll(".level-btn").forEach(btn => {
 
 faceBtn.addEventListener("click", resetGame);
 
-let longPressTimer = null;
-let longPressTriggered = false;
+let flagMode = false;
+const flagModeBtn = document.getElementById("flagModeBtn");
+flagModeBtn.addEventListener("click", () => {
+  flagMode = !flagMode;
+  flagModeBtn.classList.toggle("active", flagMode);
+  flagModeBtn.textContent = flagMode ? "🚩 插旗模式:开(点格子插旗)" : "🚩 插旗模式:关(点格子翻开)";
+});
+
+function handleCellTap(r, c) {
+  if (flagMode) {
+    toggleFlag(r, c);
+  } else {
+    revealCell(r, c);
+  }
+}
+
 let touchMoved = false;
 let touchHandled = false;
 
-boardEl.addEventListener("touchstart", (e) => {
-  const target = e.target.closest(".msq-cell");
-  if (!target) return;
+boardEl.addEventListener("touchstart", () => {
   touchMoved = false;
-  longPressTriggered = false;
-  longPressTimer = setTimeout(() => {
-    longPressTriggered = true;
-    const r = Number(target.dataset.r), c = Number(target.dataset.c);
-    toggleFlag(r, c);
-    if (navigator.vibrate) navigator.vibrate(15);
-  }, 400);
 }, { passive: true });
 
 boardEl.addEventListener("touchmove", () => {
   touchMoved = true;
-  clearTimeout(longPressTimer);
 }, { passive: true });
 
 boardEl.addEventListener("touchend", (e) => {
-  clearTimeout(longPressTimer);
   const target = e.target.closest(".msq-cell");
   touchHandled = true;
   setTimeout(() => { touchHandled = false; }, 500);
-  if (longPressTriggered || touchMoved || !target) return;
+  if (touchMoved || !target) return;
   const r = Number(target.dataset.r), c = Number(target.dataset.c);
-  revealCell(r, c);
+  handleCellTap(r, c);
 }, { passive: true });
 
 boardEl.addEventListener("click", (e) => {
@@ -429,7 +453,7 @@ boardEl.addEventListener("click", (e) => {
   const target = e.target.closest(".msq-cell");
   if (!target) return;
   const r = Number(target.dataset.r), c = Number(target.dataset.c);
-  revealCell(r, c);
+  handleCellTap(r, c);
 });
 
 boardEl.addEventListener("contextmenu", (e) => {
