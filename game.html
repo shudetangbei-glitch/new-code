@@ -128,7 +128,7 @@
       resize();
 
       function setScore(value) { state.score = Math.max(0, value); scoreEl.textContent = state.score; }
-      function setTime(value) { state.time = Math.max(0, Math.ceil(value)); timeEl.textContent = state.time; }
+      function setTime(value) { state.time = Math.max(0, value); timeEl.textContent = Math.ceil(state.time); }
 
       function reset() {
         setScore(0); setTime(30); state.items = []; state.sparks = [];
