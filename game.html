@@ -109,7 +109,7 @@
       };
       bestEl.textContent = state.best;
 
-      const player = { x: 0, y: 0, w: 96, h: 18, speed: 470 };
+      const player = { x: null, y: 0, w: 96, h: 18, speed: 470 };
       let scale = 1;
       let width = 0;
       let height = 0;
@@ -122,7 +122,7 @@
         canvas.height = Math.floor(height * scale);
         ctx.setTransform(scale, 0, 0, scale, 0, 0);
         player.y = height - 38;
-        player.x = Math.max(0, Math.min(width - player.w, player.x || (width - player.w) / 2));
+        player.x = Math.max(0, Math.min(width - player.w, player.x ?? (width - player.w) / 2));
       }
       window.addEventListener("resize", resize);
       resize();
