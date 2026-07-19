@@ -32,6 +32,7 @@
     .topbar { display: flex; justify-content: space-between; align-items: end; gap: 16px; margin-bottom: 16px; }
     h1 { margin: 0; font-size: clamp(26px, 5vw, 42px); letter-spacing: .02em; }
     .intro { margin: 7px 0 0; color: var(--muted); font-size: 14px; }
+    .hud { display: flex; align-items: stretch; gap: 9px; }
     .stats { display: flex; gap: 9px; }
     .stat { min-width: 76px; padding: 9px 11px; border: 1px solid var(--line); border-radius: 12px; background: rgba(9, 20, 36, .66); text-align: center; }
     .stat-label { display: block; color: var(--muted); font-size: 11px; }
@@ -53,12 +54,20 @@
     .primary { min-height: 46px; padding: 0 22px; color: #06111e; background: var(--accent); box-shadow: 0 8px 22px rgba(98,213,255,.2); }
     .primary:hover { filter: brightness(1.08); }
     .primary:active { transform: translateY(1px); }
+    .pause-button {
+      width: 52px; min-height: 52px; border: 1px solid var(--line); color: var(--text);
+      background: rgba(9, 20, 36, .66); font-size: 20px; line-height: 1;
+    }
+    .pause-button:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+    .pause-button:disabled { cursor: default; opacity: .42; }
+    .pause-button[data-paused="true"] { color: #06111e; background: var(--accent); }
     .help { margin: 13px 2px 0; color: var(--muted); font-size: 12px; text-align: center; }
     @media (max-width: 560px) {
       .shell { width: min(100% - 18px, 780px); padding-top: 15px; }
       .topbar { display: block; }
-      .stats { margin-top: 15px; }
-      .stat { flex: 1; }
+      .hud { margin-top: 15px; }
+      .stats { flex: 1; }
+      .stat { flex: 1; min-width: 0; }
       canvas { height: 66vh; min-height: 430px; border-radius: 14px; }
     }
   </style>
@@ -70,10 +79,15 @@
         <h1>接住星光</h1>
         <p class="intro">移动篮子，接住蓝色星星，避开红色陨石。</p>
       </div>
-      <div class="stats" aria-label="游戏数据">
-        <div class="stat"><span class="stat-label">得分</span><span class="stat-value" id="score">0</span></div>
-        <div class="stat"><span class="stat-label">剩余</span><span class="stat-value" id="time">30</span></div>
-        <div class="stat"><span class="stat-label">最高</span><span class="stat-value" id="best">0</span></div>
+      <div class="hud">
+        <div class="stats" aria-label="游戏数据">
+          <div class="stat"><span class="stat-label">得分</span><span class="stat-value" id="score">0</span></div>
+          <div class="stat"><span class="stat-label">倒计时</span><span class="stat-value" id="time">30</span></div>
+          <div class="stat"><span class="stat-label">最高</span><span class="stat-value" id="best">0</span></div>
+        </div>
+        <button class="pause-button" id="pauseBtn" type="button" aria-label="暂停游戏" title="暂停游戏" disabled>
+          <span id="pauseIcon" aria-hidden="true">Ⅱ</span>
+        </button>
       </div>
     </header>
 
@@ -82,12 +96,12 @@
       <div class="overlay" id="overlay">
         <div class="dialog">
           <h2 id="dialogTitle">准备好了吗？</h2>
-          <p id="dialogText">30 秒内尽可能多地接住星星。电脑用左右方向键或鼠标，手机直接拖动篮子。</p>
+          <p id="dialogText">30 秒内尽可能多地接住星星。手机按住画面左右拖动；电脑使用鼠标或方向键。</p>
           <button class="primary" id="startBtn">开始游戏</button>
         </div>
       </div>
     </section>
-    <p class="help">蓝星 +1　金星 +3　红色陨石 -2　按空格可暂停</p>
+    <p class="help">蓝星 +1　金星 +3　红色陨石 -2　点击暂停按钮或按空格暂停</p>
   </main>
 
   <script>
@@ -101,6 +115,8 @@
       const titleEl = document.getElementById("dialogTitle");
       const textEl = document.getElementById("dialogText");
       const startBtn = document.getElementById("startBtn");
+      const pauseBtn = document.getElementById("pauseBtn");
+      const pauseIcon = document.getElementById("pauseIcon");
 
       const state = {
         running: false, paused: false, score: 0, time: 30, last: 0,
@@ -130,9 +146,18 @@
       function setScore(value) { state.score = Math.max(0, value); scoreEl.textContent = state.score; }
       function setTime(value) { state.time = Math.max(0, value); timeEl.textContent = Math.ceil(state.time); }
 
+      function updatePauseControl() {
+        const label = state.paused ? "继续游戏" : "暂停游戏";
+        pauseIcon.textContent = state.paused ? "▶" : "Ⅱ";
+        pauseBtn.dataset.paused = String(state.paused);
+        pauseBtn.setAttribute("aria-label", label);
+        pauseBtn.title = label;
+      }
+
       function reset() {
         setScore(0); setTime(30); state.items = []; state.sparks = [];
         state.spawn = 0; state.paused = false; player.x = (width - player.w) / 2;
+        updatePauseControl();
       }
 
       function showStart(title, text, buttonText) {
@@ -142,11 +167,15 @@
 
       function start() {
         reset(); state.running = true; state.last = performance.now(); overlay.hidden = true;
+        pauseBtn.disabled = false;
         requestAnimationFrame(loop);
       }
 
       function finish() {
         state.running = false;
+        state.paused = false;
+        pauseBtn.disabled = true;
+        updatePauseControl();
         if (state.score > state.best) {
           state.best = state.score;
           localStorage.setItem("star-catcher-best", String(state.best));
@@ -158,11 +187,13 @@
       function pause() {
         if (!state.running) return;
         state.paused = !state.paused;
+        updatePauseControl();
         if (state.paused) showStart("游戏暂停", "休息一下，准备好后继续挑战。", "继续游戏");
         else { overlay.hidden = true; state.last = performance.now(); requestAnimationFrame(loop); }
       }
 
       startBtn.addEventListener("click", () => state.paused ? pause() : start());
+      pauseBtn.addEventListener("click", pause);
       window.addEventListener("keydown", (event) => {
         if (["ArrowLeft", "ArrowRight", "a", "d", "A", "D"].includes(event.key)) {
           state.keys.add(event.key); event.preventDefault();
@@ -176,7 +207,9 @@
         return Math.max(0, Math.min(width - player.w, event.clientX - rect.left - player.w / 2));
       }
       canvas.addEventListener("pointerdown", (event) => { state.pointerX = pointerPosition(event); canvas.setPointerCapture(event.pointerId); });
-      canvas.addEventListener("pointermove", (event) => { if (state.pointerX !== null) state.pointerX = pointerPosition(event); });
+      canvas.addEventListener("pointermove", (event) => {
+        if (event.pointerType === "mouse" || state.pointerX !== null) state.pointerX = pointerPosition(event);
+      });
       canvas.addEventListener("pointerup", () => { state.pointerX = null; });
       canvas.addEventListener("pointercancel", () => { state.pointerX = null; });
 
