@@ -447,6 +447,58 @@ let firstClick = true;
 let elapsed = 0;
 let timerInterval = null;
 
+const SAVE_KEY = "minesweeperSave_v1";
+
+function saveProgress() {
+  if (gameState !== "playing") return;
+  const data = {
+    level: currentLevel,
+    elapsed,
+    flagCount,
+    grid: grid.map(row => row.map(cell => ({ mine: cell.mine, revealed: cell.revealed, flagged: cell.flagged, adj: cell.adj }))),
+  };
+  try {
+    localStorage.setItem(SAVE_KEY, JSON.stringify(data));
+  } catch (e) {}
+}
+
+function clearProgress() {
+  localStorage.removeItem(SAVE_KEY);
+}
+
+function loadProgress() {
+  const raw = localStorage.getItem(SAVE_KEY);
+  if (!raw) return null;
+  try {
+    const data = JSON.parse(raw);
+    const cfg = LEVELS[data.level];
+    if (!cfg || !Array.isArray(data.grid) || data.grid.length !== cfg.rows || !data.grid[0] || data.grid[0].length !== cfg.cols) {
+      return null;
+    }
+    return data;
+  } catch (e) {
+    return null;
+  }
+}
+
+function restoreGame(data) {
+  currentLevel = data.level;
+  const cfg = LEVELS[currentLevel];
+  ROWS = cfg.rows;
+  COLS = cfg.cols;
+  MINES = cfg.mines;
+  grid = data.grid;
+  gameState = "playing";
+  flagCount = data.flagCount;
+  firstClick = false;
+  elapsed = data.elapsed;
+  document.querySelectorAll(".level-btn").forEach(b => {
+    b.classList.toggle("active", b.dataset.level === currentLevel);
+  });
+  render();
+  startTimer();
+}
+
 const boardEl = document.getElementById("board");
 const mineCountEl = document.getElementById("mineCount");
 const timerEl = document.getElementById("timer");
@@ -566,6 +618,7 @@ function revealCell(r, c) {
     gameState = "lost";
     stopTimer();
     revealAllMines();
+    clearProgress();
     render();
     return;
   }
@@ -575,6 +628,7 @@ function revealCell(r, c) {
     gameState = "won";
     stopTimer();
     flagAllMinesOnWin();
+    clearProgress();
     render();
     setTimeout(showWinModal, 500);
     return;
@@ -625,6 +679,7 @@ function render() {
 function updateHud() {
   mineCountEl.textContent = String(Math.max(0, MINES - flagCount)).padStart(3, "0");
   timerEl.textContent = String(elapsed).padStart(3, "0");
+  saveProgress();
 }
 
 function updateFace() {
@@ -634,6 +689,7 @@ function updateFace() {
 }
 
 function resetGame() {
+  clearProgress();
   grid = makeGrid();
   gameState = "ready";
   flagCount = 0;
@@ -717,7 +773,12 @@ boardEl.addEventListener("contextmenu", (e) => {
   toggleFlag(r, c);
 });
 
-setLevel("beginner");
+const saved = loadProgress();
+if (saved) {
+  restoreGame(saved);
+} else {
+  setLevel("beginner");
+}
 })();
 </script>
 </body>
