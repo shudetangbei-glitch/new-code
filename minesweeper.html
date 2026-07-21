@@ -257,6 +257,7 @@
     <button class="level-btn" data-level="intermediate">中级 16×16</button>
     <button class="level-btn" data-level="expert">高级 30×16</button>
     <button class="level-btn" data-level="godlike">封神级 30×24</button>
+    <button class="level-btn" data-level="hell">地狱级 30×24</button>
   </div>
 
   <button class="leaderboard-btn" id="leaderboardBtn">🏆 排行榜</button>
@@ -311,6 +312,7 @@ const LEVELS = {
   intermediate: { rows: 16, cols: 16, mines: 40 },
   expert: { rows: 16, cols: 30, mines: 99 },
   godlike: { rows: 24, cols: 30, mines: 170 },
+  hell: { rows: 24, cols: 30, mines: 220 },
 };
 
 const NUM_COLORS = {
@@ -320,7 +322,7 @@ const NUM_COLORS = {
 
 const SUPABASE_URL = "https://jgfixbzsnblfcomjmxuc.supabase.co";
 const SUPABASE_KEY = "sb_publishable_trShHiFmgx3kTz_1kZPKqQ_qzMbAQnl";
-const DIFFICULTY_LABELS = { beginner: "初级", intermediate: "中级", expert: "高级", godlike: "封神级" };
+const DIFFICULTY_LABELS = { beginner: "初级", intermediate: "中级", expert: "高级", godlike: "封神级", hell: "地狱级" };
 
 let sbClient = null;
 function getClient() {
@@ -409,6 +411,7 @@ function showWinModal() {
   const nameInput = document.getElementById("nameInput");
   nameInput.value = localStorage.getItem("minesweeperName") || "";
   document.getElementById("submitStatus").textContent = "";
+  document.getElementById("submitScoreBtn").disabled = false;
   document.getElementById("winModal").style.display = "flex";
 }
 
@@ -417,6 +420,8 @@ document.getElementById("skipSubmitBtn").addEventListener("click", () => {
 });
 
 document.getElementById("submitScoreBtn").addEventListener("click", async () => {
+  const submitBtn = document.getElementById("submitScoreBtn");
+  if (submitBtn.disabled) return;
   const nameInput = document.getElementById("nameInput");
   const name = nameInput.value.trim();
   const statusEl = document.getElementById("submitStatus");
@@ -424,11 +429,13 @@ document.getElementById("submitScoreBtn").addEventListener("click", async () => 
     statusEl.textContent = "请输入名字";
     return;
   }
+  submitBtn.disabled = true;
   statusEl.textContent = "提交中…";
   localStorage.setItem("minesweeperName", name);
   const result = await submitScore(currentLevel, name, elapsed);
   if (result.error) {
     statusEl.textContent = "提交失败: " + result.error;
+    submitBtn.disabled = false;
     return;
   }
   statusEl.textContent = "提交成功!";
@@ -550,7 +557,7 @@ function placeMines(excludeR, excludeC) {
 function startTimer() {
   if (timerInterval) return;
   timerInterval = setInterval(() => {
-    elapsed = Math.min(999, elapsed + 1);
+    elapsed = Math.min(9999, elapsed + 1);
     updateHud();
   }, 1000);
 }
@@ -678,7 +685,7 @@ function render() {
 
 function updateHud() {
   mineCountEl.textContent = String(Math.max(0, MINES - flagCount)).padStart(3, "0");
-  timerEl.textContent = String(elapsed).padStart(3, "0");
+  timerEl.textContent = String(elapsed).padStart(4, "0");
   saveProgress();
 }
 
