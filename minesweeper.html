@@ -257,7 +257,7 @@
     <button class="level-btn" data-level="intermediate">中级 16×16</button>
     <button class="level-btn" data-level="expert">高级 30×16</button>
     <button class="level-btn" data-level="godlike">封神级 30×24</button>
-    <button class="level-btn" data-level="hell">地狱级 30×24</button>
+    <button class="level-btn" data-level="tianzun">天尊级 30×24</button>
   </div>
 
   <button class="leaderboard-btn" id="leaderboardBtn">🏆 排行榜</button>
@@ -312,7 +312,7 @@ const LEVELS = {
   intermediate: { rows: 16, cols: 16, mines: 40 },
   expert: { rows: 16, cols: 30, mines: 99 },
   godlike: { rows: 24, cols: 30, mines: 170 },
-  hell: { rows: 24, cols: 30, mines: 220 },
+  tianzun: { rows: 24, cols: 30, mines: 220 },
 };
 
 const NUM_COLORS = {
@@ -322,7 +322,7 @@ const NUM_COLORS = {
 
 const SUPABASE_URL = "https://jgfixbzsnblfcomjmxuc.supabase.co";
 const SUPABASE_KEY = "sb_publishable_trShHiFmgx3kTz_1kZPKqQ_qzMbAQnl";
-const DIFFICULTY_LABELS = { beginner: "初级", intermediate: "中级", expert: "高级", godlike: "封神级", hell: "地狱级" };
+const DIFFICULTY_LABELS = { beginner: "初级", intermediate: "中级", expert: "高级", godlike: "封神级", tianzun: "天尊级" };
 
 let sbClient = null;
 function getClient() {
