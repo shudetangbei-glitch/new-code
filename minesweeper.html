@@ -85,6 +85,15 @@
     box-shadow: inset 1px 1px 0 0 #7b7b7b, inset -1px -1px 0 0 #ffffff;
   }
 
+  .lives-row {
+    display: none;
+    justify-content: center;
+    gap: 4px;
+    margin-bottom: 8px;
+    font-size: 18px;
+  }
+  .lives-row.show { display: flex; }
+
   .flag-mode-btn {
     display: block;
     width: 100%;
@@ -269,6 +278,7 @@
         <button class="face-btn" id="faceBtn">🙂</button>
         <div class="counter" id="timer">000</div>
       </div>
+      <div class="lives-row" id="livesRow"></div>
       <button class="flag-mode-btn" id="flagModeBtn">🚩 插旗模式:关</button>
       <div class="board-scroll">
         <div class="board" id="board"></div>
@@ -454,6 +464,20 @@ let firstClick = true;
 let elapsed = 0;
 let timerInterval = null;
 
+const TIANZUN_LIVES = 3;
+let lives = TIANZUN_LIVES;
+
+function updateLivesDisplay() {
+  const el = document.getElementById("livesRow");
+  if (currentLevel === "tianzun") {
+    el.classList.add("show");
+    el.textContent = "❤️".repeat(Math.max(0, lives));
+  } else {
+    el.classList.remove("show");
+    el.textContent = "";
+  }
+}
+
 const SAVE_KEY = "minesweeperSave_v1";
 
 function saveProgress() {
@@ -462,6 +486,7 @@ function saveProgress() {
     level: currentLevel,
     elapsed,
     flagCount,
+    lives,
     grid: grid.map(row => row.map(cell => ({ mine: cell.mine, revealed: cell.revealed, flagged: cell.flagged, adj: cell.adj }))),
   };
   try {
@@ -499,6 +524,7 @@ function restoreGame(data) {
   flagCount = data.flagCount;
   firstClick = false;
   elapsed = data.elapsed;
+  lives = data.lives !== undefined ? data.lives : TIANZUN_LIVES;
   document.querySelectorAll(".level-btn").forEach(b => {
     b.classList.toggle("active", b.dataset.level === currentLevel);
   });
@@ -622,6 +648,13 @@ function revealCell(r, c) {
 
   if (cell.mine) {
     cell.revealed = true;
+    if (currentLevel === "tianzun") {
+      lives -= 1;
+      if (lives > 0) {
+        render();
+        return;
+      }
+    }
     gameState = "lost";
     stopTimer();
     revealAllMines();
@@ -686,6 +719,7 @@ function render() {
 function updateHud() {
   mineCountEl.textContent = String(Math.max(0, MINES - flagCount)).padStart(3, "0");
   timerEl.textContent = String(elapsed).padStart(4, "0");
+  updateLivesDisplay();
   saveProgress();
 }
 
@@ -702,6 +736,7 @@ function resetGame() {
   flagCount = 0;
   firstClick = true;
   elapsed = 0;
+  lives = TIANZUN_LIVES;
   stopTimer();
   render();
 }
