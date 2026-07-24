@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#12161b">
-  <title>鍚堟垚瀹堝煄</title>
+  <title>合成守城</title>
   <style>
     :root {
       --bg: #12161b;
@@ -246,73 +246,73 @@
     }
   </style>
 </head>
-<body data-build="2026-07-25-v1">
+<body data-build="2026-07-25-v2-utf8">
   <main class="app">
     <header class="topbar">
       <div class="brand">
-        <h1>鍚堟垚瀹堝煄</h1>
-        <p>閮ㄧ讲銆佸悎鎴愩€佸崌绾э紝瀹堜綇瓒婃潵瓒婄寷鐑堢殑鏁屾疆銆?/p>
+        <h1>合成守城</h1>
+        <p>部署、合成、升级，守住越来越猛烈的敌潮。</p>
       </div>
       <div class="icon-actions">
-        <button class="icon-btn" id="leaderboardBtn" type="button" title="鍏叡鎺掕姒? aria-label="鍏叡鎺掕姒?>馃弳</button>
-        <button class="icon-btn" id="pauseBtn" type="button" title="鏆傚仠" aria-label="鏆傚仠" disabled>鈪?/button>
+        <button class="icon-btn" id="leaderboardBtn" type="button" title="公共排行榜" aria-label="公共排行榜">🏆</button>
+        <button class="icon-btn" id="pauseBtn" type="button" title="暂停" aria-label="暂停" disabled>Ⅱ</button>
       </div>
     </header>
 
-    <section class="hud" aria-label="娓告垙鐘舵€?>
-      <div class="stat"><span class="stat-label">娉㈡</span><span class="stat-value" id="waveEl">0</span></div>
-      <div class="stat"><span class="stat-label">鍩庡</span><span class="stat-value" id="coreEl">100</span></div>
-      <div class="stat"><span class="stat-label">閲戝竵</span><span class="stat-value" id="coinsEl">80</span></div>
-      <div class="stat"><span class="stat-label">鏁屼汉</span><span class="stat-value" id="enemyEl">0</span></div>
-      <div class="stat"><span class="stat-label">鎬诲垎</span><span class="stat-value" id="scoreEl">0</span></div>
+    <section class="hud" aria-label="游戏状态">
+      <div class="stat"><span class="stat-label">波次</span><span class="stat-value" id="waveEl">0</span></div>
+      <div class="stat"><span class="stat-label">城墙</span><span class="stat-value" id="coreEl">100</span></div>
+      <div class="stat"><span class="stat-label">金币</span><span class="stat-value" id="coinsEl">80</span></div>
+      <div class="stat"><span class="stat-label">敌人</span><span class="stat-value" id="enemyEl">0</span></div>
+      <div class="stat"><span class="stat-label">总分</span><span class="stat-value" id="scoreEl">0</span></div>
     </section>
 
     <section class="battle">
-      <canvas id="game" aria-label="鍚堟垚瀹堝煄鎴樺満"></canvas>
+      <canvas id="game" aria-label="合成守城战场"></canvas>
       <div class="status" id="status"></div>
     </section>
 
     <section class="controls">
-      <div class="legend"><strong>鍚岀骇鐐</strong><span>杩炵画鐐归€夊嵆鍙悎鎴?/span></div>
-      <button class="command primary" id="buyBtn" type="button" disabled>閮ㄧ讲鐐 路 20</button>
-      <button class="command danger" id="sellBtn" type="button" disabled>鍑哄敭</button>
+      <div class="legend"><strong>同级炮塔</strong><span>连续点选即可合成</span></div>
+      <button class="command primary" id="buyBtn" type="button" disabled>部署炮塔 · 20</button>
+      <button class="command danger" id="sellBtn" type="button" disabled>出售</button>
     </section>
   </main>
 
   <div class="overlay" id="mainOverlay">
     <section class="dialog">
-      <h2 id="mainTitle">瀹堝煄鍑嗗</h2>
-      <p id="mainText">鏁屼汉浼氫粠宸︿晶杩涙敾銆傞儴缃茬偖濉旓紝鍐嶅皢涓ゅ骇鍚岀骇鐐鍚堟垚涓烘洿寮虹瓑绾с€?/p>
+      <h2 id="mainTitle">守城准备</h2>
+      <p id="mainText">敌人会从左侧进攻。部署炮塔，再将两座同级炮塔合成为更强等级。</p>
       <div class="score-form" id="scoreForm" hidden>
-        <input id="nameInput" maxlength="20" autocomplete="nickname" placeholder="杈撳叆鎺掕姒滄樀绉?>
-        <button class="command primary" id="submitBtn" type="button">鎻愪氦鎴愮哗</button>
+        <input id="nameInput" maxlength="20" autocomplete="nickname" placeholder="输入排行榜昵称">
+        <button class="command primary" id="submitBtn" type="button">提交成绩</button>
       </div>
       <div class="submit-state" id="submitState"></div>
       <div class="dialog-actions">
-        <button class="command primary" id="mainAction" type="button">寮€濮嬪畧鍩?/button>
+        <button class="command primary" id="mainAction" type="button">开始守城</button>
       </div>
     </section>
   </div>
 
   <div class="overlay" id="upgradeOverlay" hidden>
     <section class="dialog">
-      <h2>娉㈡瀹屾垚</h2>
-      <p>閫夋嫨涓€椤瑰鎻达紝涓嬩竴娉㈠皢绔嬪埢寮€濮嬨€?/p>
+      <h2>波次完成</h2>
+      <p>选择一项增援，下一波将立刻开始。</p>
       <div class="upgrade-grid">
-        <button class="upgrade" type="button" data-upgrade="damage"><strong>寮哄寲寮硅嵂</strong><span>鎵€鏈夌偖濉斾激瀹虫彁楂?18%</span></button>
-        <button class="upgrade" type="button" data-upgrade="speed"><strong>蹇€熻濉?/strong><span>鎵€鏈夌偖濉斿皠閫熸彁楂?14%</span></button>
-        <button class="upgrade" type="button" data-upgrade="repair"><strong>绱ф€ョ淮淇?/strong><span>鎭㈠ 28 鐐瑰煄澧欏苟鑾峰緱 20 閲戝竵</span></button>
+        <button class="upgrade" type="button" data-upgrade="damage"><strong>强化弹药</strong><span>所有炮塔伤害提高 18%</span></button>
+        <button class="upgrade" type="button" data-upgrade="speed"><strong>快速装填</strong><span>所有炮塔射速提高 14%</span></button>
+        <button class="upgrade" type="button" data-upgrade="repair"><strong>紧急维修</strong><span>恢复 28 点城墙并获得 20 金币</span></button>
       </div>
     </section>
   </div>
 
   <div class="overlay" id="leaderboardOverlay" hidden>
     <section class="dialog">
-      <h2>鍏叡鎺掕姒?/h2>
-      <p>鎵€鏈夌帺瀹跺叡浜殑鍚堟垚瀹堝煄鎴愮哗銆?/p>
+      <h2>公共排行榜</h2>
+      <p>所有玩家共享的合成守城成绩。</p>
       <ol class="leaderboard-list" id="leaderboardList"></ol>
       <div class="dialog-actions">
-        <button class="command" id="closeLeaderboard" type="button">鍏抽棴</button>
+        <button class="command" id="closeLeaderboard" type="button">关闭</button>
       </div>
     </section>
   </div>
@@ -423,9 +423,9 @@
       const active = state.mode === "running" || state.mode === "paused";
       buyBtn.disabled = !active || state.coins < TOWER_COST || !state.towers.includes(null);
       pauseBtn.disabled = !active;
-      pauseBtn.textContent = state.mode === "paused" ? "鈻? : "鈪?;
-      pauseBtn.setAttribute("aria-label", state.mode === "paused" ? "缁х画" : "鏆傚仠");
-      pauseBtn.title = state.mode === "paused" ? "缁х画" : "鏆傚仠";
+      pauseBtn.textContent = state.mode === "paused" ? "▶" : "Ⅱ";
+      pauseBtn.setAttribute("aria-label", state.mode === "paused" ? "继续" : "暂停");
+      pauseBtn.title = state.mode === "paused" ? "继续" : "暂停";
       sellBtn.disabled = !active || state.selected < 0 || !state.towers[state.selected];
     }
 
@@ -454,7 +454,7 @@
       state.speedBoost = 1;
       state.scoreSubmitted = false;
       submitBtn.disabled = false;
-      submitBtn.textContent = "鎻愪氦鎴愮哗";
+      submitBtn.textContent = "提交成绩";
       submitState.textContent = "";
       mainOverlay.hidden = true;
       scoreForm.hidden = true;
@@ -469,7 +469,7 @@
       state.mode = "running";
       upgradeOverlay.hidden = true;
       lastTime = performance.now();
-      notify(state.wave % 5 === 0 ? "Boss 娉㈡鏉ヨ" : "绗?" + state.wave + " 娉?);
+      notify(state.wave % 5 === 0 ? "Boss 波次来袭" : "第 " + state.wave + " 波");
       updateHud();
     }
 
@@ -504,16 +504,16 @@
 
     function buyTower(preferredIndex) {
       if (state.mode !== "running" && state.mode !== "paused") return;
-      if (state.coins < TOWER_COST) return notify("閲戝竵涓嶈冻");
+      if (state.coins < TOWER_COST) return notify("金币不足");
       let index = Number.isInteger(preferredIndex) && state.towers[preferredIndex] === null
         ? preferredIndex
         : state.towers.indexOf(null);
-      if (index < 0) return notify("鐐浣嶅凡婊★紝璇峰厛鍚堟垚");
+      if (index < 0) return notify("炮塔位已满，请先合成");
       state.coins -= TOWER_COST;
       state.towers[index] = { level: 1, cooldown: Math.random() * .3 };
       state.selected = index;
       burst(slotPosition(index).x, slotPosition(index).y, "#57d3a0", 12);
-      notify("宸查儴缃?1 绾х偖濉?);
+      notify("已部署 1 级炮塔");
       updateHud();
     }
 
@@ -524,7 +524,7 @@
           state.towers[index] = state.towers[state.selected];
           state.towers[state.selected] = null;
           state.selected = index;
-          notify("鐐宸茬Щ鍔?);
+          notify("炮塔已移动");
         } else {
           buyTower(index);
         }
@@ -533,7 +533,7 @@
       }
       if (state.selected < 0) {
         state.selected = index;
-        notify(tower.level + " 绾х偖濉斿凡閫変腑");
+        notify(tower.level + " 级炮塔已选中");
       } else if (state.selected === index) {
         state.selected = -1;
       } else {
@@ -547,13 +547,13 @@
           state.score += tower.level * 25;
           const p = slotPosition(index);
           burst(p.x, p.y, "#f5c451", 24);
-          notify("鍚堟垚涓?" + tower.level + " 绾х偖濉?);
+          notify("合成为 " + tower.level + " 级炮塔");
         } else if (tower.level >= MAX_LEVEL && selectedTower && selectedTower.level === tower.level) {
-          notify("宸茶揪鍒版渶楂樼瓑绾?);
+          notify("已达到最高等级");
           state.selected = index;
         } else {
           state.selected = index;
-          notify(tower.level + " 绾х偖濉斿凡閫変腑");
+          notify(tower.level + " 级炮塔已选中");
         }
       }
       updateHud();
@@ -567,7 +567,7 @@
       state.coins += refund;
       state.towers[state.selected] = null;
       state.selected = -1;
-      notify("鍑哄敭鑾峰緱 " + refund + " 閲戝竵");
+      notify("出售获得 " + refund + " 金币");
       updateHud();
     }
 
@@ -808,7 +808,7 @@
       ctx.font = "800 28px system-ui";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      ctx.fillText("宸叉殏鍋?, width / 2, height / 2);
+      ctx.fillText("已暂停", width / 2, height / 2);
     }
 
     function draw() {
@@ -854,9 +854,9 @@
       state.enemies = [];
       state.bullets = [];
       state.selected = -1;
-      mainTitle.textContent = "鍩庡澶卞畧";
-      mainText.textContent = "浣犲畧鍒颁簡绗?" + state.wave + " 娉紝鑾峰緱 " + state.score + " 鍒嗐€?;
-      mainAction.textContent = "鍐嶅畧涓€娆?;
+      mainTitle.textContent = "城墙失守";
+      mainText.textContent = "你守到了第 " + state.wave + " 波，获得 " + state.score + " 分。";
+      mainAction.textContent = "再守一次";
       nameInput.value = localStorage.getItem("mergeDefenseName") || "";
       scoreForm.hidden = false;
       mainOverlay.hidden = false;
@@ -867,31 +867,31 @@
       if (state.scoreSubmitted) return;
       const name = nameInput.value.trim().slice(0, 20);
       if (!name) {
-        submitState.textContent = "璇峰厛杈撳叆鏄电О";
+        submitState.textContent = "请先输入昵称";
         nameInput.focus();
         return;
       }
       const sb = getClient();
       if (!sb) {
-        submitState.textContent = "鎺掕姒滄湇鍔″姞杞藉け璐ワ紝璇锋鏌ョ綉缁?;
+        submitState.textContent = "排行榜服务加载失败，请检查网络";
         return;
       }
       submitBtn.disabled = true;
-      submitState.textContent = "姝ｅ湪鎻愪氦...";
+      submitState.textContent = "正在提交...";
       const { error } = await sb.from(SCORE_TABLE).insert({
         name,
         score: state.score,
         wave: Math.max(1, state.wave)
       });
       if (error) {
-        submitState.textContent = "鎻愪氦澶辫触锛? + error.message;
+        submitState.textContent = "提交失败：" + error.message;
         submitBtn.disabled = false;
         return;
       }
       localStorage.setItem("mergeDefenseName", name);
       state.scoreSubmitted = true;
-      submitBtn.textContent = "宸叉彁浜?;
-      submitState.textContent = "鎴愮哗宸茶繘鍏ュ叕鍏辨帓琛屾";
+      submitBtn.textContent = "已提交";
+      submitState.textContent = "成绩已进入公共排行榜";
     }
 
     function escapeHtml(value) {
@@ -901,10 +901,10 @@
     }
 
     async function loadLeaderboard() {
-      leaderboardList.innerHTML = '<li><span class="player">鍔犺浇涓?..</span></li>';
+      leaderboardList.innerHTML = '<li><span class="player">加载中...</span></li>';
       const sb = getClient();
       if (!sb) {
-        leaderboardList.innerHTML = '<li><span class="player">鎺掕姒滄湇鍔″姞杞藉け璐?/span></li>';
+        leaderboardList.innerHTML = '<li><span class="player">排行榜服务加载失败</span></li>';
         return;
       }
       const { data, error } = await sb
@@ -914,17 +914,17 @@
         .order("wave", { ascending: false })
         .limit(10);
       if (error) {
-        leaderboardList.innerHTML = '<li><span class="player">璇诲彇澶辫触锛? + escapeHtml(error.message) + '</span></li>';
+        leaderboardList.innerHTML = '<li><span class="player">读取失败：' + escapeHtml(error.message) + '</span></li>';
         return;
       }
       if (!data || !data.length) {
-        leaderboardList.innerHTML = '<li><span class="player">杩樻病鏈夋垚缁╋紝绛変綘鎷夸笅绗竴鍚?/span></li>';
+        leaderboardList.innerHTML = '<li><span class="player">还没有成绩，等你拿下第一名</span></li>';
         return;
       }
       leaderboardList.innerHTML = data.map((row, index) =>
         '<li><span class="rank">' + (index + 1) + '</span>' +
         '<span class="player">' + escapeHtml(row.name) + '</span>' +
-        '<span class="result">' + row.score + '<small>绗?' + row.wave + ' 娉?/small></span></li>'
+        '<span class="result">' + row.score + '<small>第 ' + row.wave + ' 波</small></span></li>'
       ).join("");
     }
 
