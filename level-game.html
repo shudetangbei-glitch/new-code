@@ -345,7 +345,8 @@
         if (hit) {
           state.stageHits += target.points;
           state.score += target.points * (20 + state.stage * 8);
-          spawnTarget();
+          if (state.stageHits >= stages[state.stage].goal) clearStage();
+          else spawnTarget();
         } else {
           state.lives -= 1;
           if (state.lives <= 0) failStage("生命耗尽。");
@@ -378,6 +379,13 @@
       renderBoard();
       updateHud();
       draw();
+      showOverlay(
+        "准备闯关",
+        "点击或轻触移动的星点。蓝色目标 1 分，金色目标 2 分；点空会损失生命。",
+        "开始游戏",
+        startRun,
+        false
+      );
     })();
   </script>
 </body>
