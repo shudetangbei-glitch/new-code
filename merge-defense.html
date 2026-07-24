@@ -1,0 +1,977 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#12161b">
+  <title>鍚堟垚瀹堝煄</title>
+  <style>
+    :root {
+      --bg: #12161b;
+      --panel: #1b2229;
+      --panel-2: #222b33;
+      --line: #36434d;
+      --text: #f1f5f2;
+      --muted: #9aaba5;
+      --mint: #57d3a0;
+      --yellow: #f5c451;
+      --red: #f06d68;
+      --blue: #66a8ff;
+    }
+    * { box-sizing: border-box; }
+    html, body { min-height: 100%; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Microsoft YaHei", sans-serif;
+      overscroll-behavior: none;
+    }
+    button, input { font: inherit; }
+    button { color: inherit; }
+    .app {
+      width: min(100% - 24px, 1040px);
+      margin: 0 auto;
+      padding: 18px 0 32px;
+    }
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      margin-bottom: 12px;
+    }
+    .brand h1 {
+      margin: 0;
+      font-size: 25px;
+      letter-spacing: 0;
+    }
+    .brand p {
+      margin: 3px 0 0;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .icon-actions { display: flex; gap: 8px; }
+    .icon-btn {
+      width: 42px;
+      height: 42px;
+      display: grid;
+      place-items: center;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: var(--panel);
+      cursor: pointer;
+      font-size: 19px;
+    }
+    .icon-btn:disabled { opacity: .45; cursor: default; }
+    .hud {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+      margin-bottom: 10px;
+    }
+    .stat {
+      min-width: 0;
+      padding: 8px 10px;
+      background: var(--panel);
+      border-right: 1px solid var(--line);
+    }
+    .stat:last-child { border-right: 0; }
+    .stat-label {
+      display: block;
+      color: var(--muted);
+      font-size: 10px;
+      white-space: nowrap;
+    }
+    .stat-value {
+      display: block;
+      margin-top: 2px;
+      font-size: 19px;
+      font-weight: 800;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .battle {
+      position: relative;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+      background: #17201e;
+    }
+    canvas {
+      display: block;
+      width: 100%;
+      height: min(65vh, 570px);
+      min-height: 430px;
+      touch-action: manipulation;
+    }
+    .status {
+      position: absolute;
+      top: 12px;
+      left: 50%;
+      translate: -50% 0;
+      max-width: calc(100% - 24px);
+      padding: 7px 11px;
+      border-radius: 6px;
+      background: rgba(18, 22, 27, .9);
+      border: 1px solid rgba(255,255,255,.12);
+      color: var(--text);
+      font-size: 12px;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity .18s;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .status.show { opacity: 1; }
+    .controls {
+      display: grid;
+      grid-template-columns: 1fr auto auto;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .command {
+      min-height: 46px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      padding: 0 15px;
+      background: var(--panel);
+      cursor: pointer;
+      font-weight: 750;
+    }
+    .command.primary {
+      border-color: #3a9e78;
+      background: var(--mint);
+      color: #092017;
+    }
+    .command.danger { color: #ffaaa6; }
+    .command:disabled { opacity: .42; cursor: default; }
+    .legend {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      min-width: 0;
+      color: var(--muted);
+      font-size: 11px;
+      padding-left: 4px;
+    }
+    .legend strong { color: var(--text); font-weight: 650; }
+    .overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 20;
+      display: grid;
+      place-items: center;
+      padding: 18px;
+      background: rgba(7, 10, 12, .76);
+    }
+    .overlay[hidden] { display: none; }
+    .dialog {
+      width: min(100%, 430px);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 22px;
+      background: var(--panel);
+      box-shadow: 0 20px 60px rgba(0,0,0,.3);
+    }
+    .dialog h2 { margin: 0 0 8px; font-size: 23px; }
+    .dialog p {
+      margin: 0 0 17px;
+      color: var(--muted);
+      line-height: 1.65;
+      font-size: 13px;
+    }
+    .dialog-actions { display: flex; gap: 8px; }
+    .dialog-actions .command { flex: 1; }
+    .upgrade-grid { display: grid; gap: 8px; }
+    .upgrade {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      padding: 13px;
+      background: var(--panel-2);
+      text-align: left;
+      cursor: pointer;
+    }
+    .upgrade strong { display: block; color: var(--yellow); }
+    .upgrade span { display: block; margin-top: 3px; color: var(--muted); font-size: 12px; }
+    .score-form { display: grid; grid-template-columns: 1fr auto; gap: 8px; margin-top: 12px; }
+    .score-form[hidden] { display: none; }
+    .score-form input {
+      min-width: 0;
+      min-height: 44px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      padding: 0 11px;
+      background: #11171c;
+      color: var(--text);
+      outline: none;
+    }
+    .score-form input:focus { border-color: var(--mint); }
+    .submit-state { min-height: 18px; margin-top: 8px; color: var(--muted); font-size: 12px; }
+    .leaderboard-list { margin: 12px 0 16px; padding: 0; list-style: none; }
+    .leaderboard-list li {
+      display: grid;
+      grid-template-columns: 28px minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 8px;
+      padding: 9px 2px;
+      border-bottom: 1px solid var(--line);
+      font-size: 13px;
+    }
+    .rank { color: var(--yellow); font-weight: 800; }
+    .player { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .result { text-align: right; color: var(--mint); font-weight: 750; }
+    .result small { display: block; color: var(--muted); font-weight: 500; }
+    @media (max-width: 680px) {
+      .app { width: min(100% - 14px, 1040px); padding-top: 10px; }
+      .brand p { display: none; }
+      .hud { grid-template-columns: repeat(5, 1fr); }
+      .stat { padding: 7px 5px; text-align: center; }
+      .stat-value { font-size: 16px; }
+      canvas { height: 58vh; min-height: 400px; }
+      .controls { grid-template-columns: 1fr auto; }
+      .legend { grid-column: 1 / -1; grid-row: 2; justify-content: center; padding: 2px 0 0; }
+      .command { padding: 0 12px; }
+    }
+    @media (max-width: 390px) {
+      .brand h1 { font-size: 21px; }
+      .icon-btn { width: 39px; height: 39px; }
+      .stat-label { font-size: 9px; }
+      .stat-value { font-size: 14px; }
+      canvas { min-height: 380px; }
+    }
+  </style>
+</head>
+<body data-build="2026-07-25-v1">
+  <main class="app">
+    <header class="topbar">
+      <div class="brand">
+        <h1>鍚堟垚瀹堝煄</h1>
+        <p>閮ㄧ讲銆佸悎鎴愩€佸崌绾э紝瀹堜綇瓒婃潵瓒婄寷鐑堢殑鏁屾疆銆?/p>
+      </div>
+      <div class="icon-actions">
+        <button class="icon-btn" id="leaderboardBtn" type="button" title="鍏叡鎺掕姒? aria-label="鍏叡鎺掕姒?>馃弳</button>
+        <button class="icon-btn" id="pauseBtn" type="button" title="鏆傚仠" aria-label="鏆傚仠" disabled>鈪?/button>
+      </div>
+    </header>
+
+    <section class="hud" aria-label="娓告垙鐘舵€?>
+      <div class="stat"><span class="stat-label">娉㈡</span><span class="stat-value" id="waveEl">0</span></div>
+      <div class="stat"><span class="stat-label">鍩庡</span><span class="stat-value" id="coreEl">100</span></div>
+      <div class="stat"><span class="stat-label">閲戝竵</span><span class="stat-value" id="coinsEl">80</span></div>
+      <div class="stat"><span class="stat-label">鏁屼汉</span><span class="stat-value" id="enemyEl">0</span></div>
+      <div class="stat"><span class="stat-label">鎬诲垎</span><span class="stat-value" id="scoreEl">0</span></div>
+    </section>
+
+    <section class="battle">
+      <canvas id="game" aria-label="鍚堟垚瀹堝煄鎴樺満"></canvas>
+      <div class="status" id="status"></div>
+    </section>
+
+    <section class="controls">
+      <div class="legend"><strong>鍚岀骇鐐</strong><span>杩炵画鐐归€夊嵆鍙悎鎴?/span></div>
+      <button class="command primary" id="buyBtn" type="button" disabled>閮ㄧ讲鐐 路 20</button>
+      <button class="command danger" id="sellBtn" type="button" disabled>鍑哄敭</button>
+    </section>
+  </main>
+
+  <div class="overlay" id="mainOverlay">
+    <section class="dialog">
+      <h2 id="mainTitle">瀹堝煄鍑嗗</h2>
+      <p id="mainText">鏁屼汉浼氫粠宸︿晶杩涙敾銆傞儴缃茬偖濉旓紝鍐嶅皢涓ゅ骇鍚岀骇鐐鍚堟垚涓烘洿寮虹瓑绾с€?/p>
+      <div class="score-form" id="scoreForm" hidden>
+        <input id="nameInput" maxlength="20" autocomplete="nickname" placeholder="杈撳叆鎺掕姒滄樀绉?>
+        <button class="command primary" id="submitBtn" type="button">鎻愪氦鎴愮哗</button>
+      </div>
+      <div class="submit-state" id="submitState"></div>
+      <div class="dialog-actions">
+        <button class="command primary" id="mainAction" type="button">寮€濮嬪畧鍩?/button>
+      </div>
+    </section>
+  </div>
+
+  <div class="overlay" id="upgradeOverlay" hidden>
+    <section class="dialog">
+      <h2>娉㈡瀹屾垚</h2>
+      <p>閫夋嫨涓€椤瑰鎻达紝涓嬩竴娉㈠皢绔嬪埢寮€濮嬨€?/p>
+      <div class="upgrade-grid">
+        <button class="upgrade" type="button" data-upgrade="damage"><strong>寮哄寲寮硅嵂</strong><span>鎵€鏈夌偖濉斾激瀹虫彁楂?18%</span></button>
+        <button class="upgrade" type="button" data-upgrade="speed"><strong>蹇€熻濉?/strong><span>鎵€鏈夌偖濉斿皠閫熸彁楂?14%</span></button>
+        <button class="upgrade" type="button" data-upgrade="repair"><strong>绱ф€ョ淮淇?/strong><span>鎭㈠ 28 鐐瑰煄澧欏苟鑾峰緱 20 閲戝竵</span></button>
+      </div>
+    </section>
+  </div>
+
+  <div class="overlay" id="leaderboardOverlay" hidden>
+    <section class="dialog">
+      <h2>鍏叡鎺掕姒?/h2>
+      <p>鎵€鏈夌帺瀹跺叡浜殑鍚堟垚瀹堝煄鎴愮哗銆?/p>
+      <ol class="leaderboard-list" id="leaderboardList"></ol>
+      <div class="dialog-actions">
+        <button class="command" id="closeLeaderboard" type="button">鍏抽棴</button>
+      </div>
+    </section>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+  (() => {
+    "use strict";
+
+    const SUPABASE_URL = "https://jgfixbzsnblfcomjmxuc.supabase.co";
+    const SUPABASE_KEY = "sb_publishable_trShHiFmgx3kTz_1kZPKqQ_qzMbAQnl";
+    const SCORE_TABLE = "merge_defense_scores";
+    const TOWER_COST = 20;
+    const MAX_LEVEL = 6;
+    const canvas = document.getElementById("game");
+    const ctx = canvas.getContext("2d");
+    const waveEl = document.getElementById("waveEl");
+    const coreEl = document.getElementById("coreEl");
+    const coinsEl = document.getElementById("coinsEl");
+    const enemyEl = document.getElementById("enemyEl");
+    const scoreEl = document.getElementById("scoreEl");
+    const buyBtn = document.getElementById("buyBtn");
+    const sellBtn = document.getElementById("sellBtn");
+    const pauseBtn = document.getElementById("pauseBtn");
+    const statusEl = document.getElementById("status");
+    const mainOverlay = document.getElementById("mainOverlay");
+    const mainTitle = document.getElementById("mainTitle");
+    const mainText = document.getElementById("mainText");
+    const mainAction = document.getElementById("mainAction");
+    const scoreForm = document.getElementById("scoreForm");
+    const nameInput = document.getElementById("nameInput");
+    const submitBtn = document.getElementById("submitBtn");
+    const submitState = document.getElementById("submitState");
+    const upgradeOverlay = document.getElementById("upgradeOverlay");
+    const leaderboardOverlay = document.getElementById("leaderboardOverlay");
+    const leaderboardList = document.getElementById("leaderboardList");
+
+    let width = 0;
+    let height = 0;
+    let dpr = 1;
+    let lastTime = 0;
+    let statusTimer = 0;
+    let client = null;
+    let enemyId = 0;
+    let resumeAfterLeaderboard = false;
+
+    const state = {
+      mode: "ready",
+      wave: 0,
+      core: 100,
+      coins: 80,
+      score: 0,
+      spawned: 0,
+      waveTotal: 0,
+      spawnCooldown: 0,
+      selected: -1,
+      towers: Array(8).fill(null),
+      enemies: [],
+      bullets: [],
+      particles: [],
+      damageBoost: 1,
+      speedBoost: 1,
+      scoreSubmitted: false
+    };
+
+    function getClient() {
+      if (!client && window.supabase) client = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+      return client;
+    }
+
+    function resize() {
+      const rect = canvas.getBoundingClientRect();
+      const oldWidth = width;
+      const oldHeight = height;
+      width = Math.max(1, rect.width);
+      height = Math.max(1, rect.height);
+      if (oldWidth > 0 && oldHeight > 0) {
+        const sx = width / oldWidth;
+        const sy = height / oldHeight;
+        state.enemies.forEach(e => { e.x *= sx; e.y *= sy; });
+        state.bullets.forEach(b => { b.x *= sx; b.y *= sy; });
+        state.particles.forEach(p => { p.x *= sx; p.y *= sy; });
+      }
+      dpr = Math.min(window.devicePixelRatio || 1, 2);
+      canvas.width = Math.round(width * dpr);
+      canvas.height = Math.round(height * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      draw();
+    }
+
+    function slotPosition(index) {
+      const cols = 4;
+      const col = index % cols;
+      const row = Math.floor(index / cols);
+      return {
+        x: width * (.18 + col * .215),
+        y: height * (.34 + row * .39),
+        radius: Math.max(27, Math.min(37, width * .043))
+      };
+    }
+
+    function updateHud() {
+      waveEl.textContent = state.wave;
+      coreEl.textContent = Math.max(0, Math.ceil(state.core));
+      coinsEl.textContent = state.coins;
+      enemyEl.textContent = state.enemies.length + Math.max(0, state.waveTotal - state.spawned);
+      scoreEl.textContent = state.score;
+      const active = state.mode === "running" || state.mode === "paused";
+      buyBtn.disabled = !active || state.coins < TOWER_COST || !state.towers.includes(null);
+      pauseBtn.disabled = !active;
+      pauseBtn.textContent = state.mode === "paused" ? "鈻? : "鈪?;
+      pauseBtn.setAttribute("aria-label", state.mode === "paused" ? "缁х画" : "鏆傚仠");
+      pauseBtn.title = state.mode === "paused" ? "缁х画" : "鏆傚仠";
+      sellBtn.disabled = !active || state.selected < 0 || !state.towers[state.selected];
+    }
+
+    function notify(message) {
+      statusEl.textContent = message;
+      statusEl.classList.add("show");
+      clearTimeout(statusTimer);
+      statusTimer = setTimeout(() => statusEl.classList.remove("show"), 1500);
+    }
+
+    function resetGame() {
+      state.mode = "running";
+      state.wave = 0;
+      state.core = 100;
+      state.coins = 80;
+      state.score = 0;
+      state.spawned = 0;
+      state.waveTotal = 0;
+      state.spawnCooldown = 0;
+      state.selected = -1;
+      state.towers = Array(8).fill(null);
+      state.enemies = [];
+      state.bullets = [];
+      state.particles = [];
+      state.damageBoost = 1;
+      state.speedBoost = 1;
+      state.scoreSubmitted = false;
+      submitBtn.disabled = false;
+      submitBtn.textContent = "鎻愪氦鎴愮哗";
+      submitState.textContent = "";
+      mainOverlay.hidden = true;
+      scoreForm.hidden = true;
+      startWave();
+    }
+
+    function startWave() {
+      state.wave += 1;
+      state.spawned = 0;
+      state.waveTotal = 6 + state.wave * 2 + (state.wave % 5 === 0 ? 1 : 0);
+      state.spawnCooldown = .6;
+      state.mode = "running";
+      upgradeOverlay.hidden = true;
+      lastTime = performance.now();
+      notify(state.wave % 5 === 0 ? "Boss 娉㈡鏉ヨ" : "绗?" + state.wave + " 娉?);
+      updateHud();
+    }
+
+    function spawnEnemy() {
+      const boss = state.wave % 5 === 0 && state.spawned === state.waveTotal - 1;
+      const lane = Math.floor(Math.random() * 3);
+      const hpBase = 45 + state.wave * 14;
+      const hp = boss ? hpBase * 7 : hpBase * (.82 + Math.random() * .36);
+      state.enemies.push({
+        id: ++enemyId,
+        x: -35,
+        y: height * (.18 + lane * .32),
+        radius: boss ? 24 : 14 + Math.min(5, state.wave * .15),
+        hp,
+        maxHp: hp,
+        speed: (boss ? 23 : 34 + Math.min(36, state.wave * 1.8)) * (height / 500),
+        damage: boss ? 35 : 10,
+        reward: boss ? 55 : 7 + Math.floor(state.wave / 3),
+        boss
+      });
+      state.spawned += 1;
+      state.spawnCooldown = Math.max(.32, 1.05 - state.wave * .025);
+    }
+
+    function towerStats(level) {
+      return {
+        damage: (15 + level * 8) * Math.pow(1.43, level - 1) * state.damageBoost,
+        interval: Math.max(.18, (.86 - level * .055) / state.speedBoost),
+        range: 145 + level * 13
+      };
+    }
+
+    function buyTower(preferredIndex) {
+      if (state.mode !== "running" && state.mode !== "paused") return;
+      if (state.coins < TOWER_COST) return notify("閲戝竵涓嶈冻");
+      let index = Number.isInteger(preferredIndex) && state.towers[preferredIndex] === null
+        ? preferredIndex
+        : state.towers.indexOf(null);
+      if (index < 0) return notify("鐐浣嶅凡婊★紝璇峰厛鍚堟垚");
+      state.coins -= TOWER_COST;
+      state.towers[index] = { level: 1, cooldown: Math.random() * .3 };
+      state.selected = index;
+      burst(slotPosition(index).x, slotPosition(index).y, "#57d3a0", 12);
+      notify("宸查儴缃?1 绾х偖濉?);
+      updateHud();
+    }
+
+    function handleSlot(index) {
+      const tower = state.towers[index];
+      if (!tower) {
+        if (state.selected >= 0 && state.towers[state.selected]) {
+          state.towers[index] = state.towers[state.selected];
+          state.towers[state.selected] = null;
+          state.selected = index;
+          notify("鐐宸茬Щ鍔?);
+        } else {
+          buyTower(index);
+        }
+        updateHud();
+        return;
+      }
+      if (state.selected < 0) {
+        state.selected = index;
+        notify(tower.level + " 绾х偖濉斿凡閫変腑");
+      } else if (state.selected === index) {
+        state.selected = -1;
+      } else {
+        const selectedTower = state.towers[state.selected];
+        if (selectedTower && selectedTower.level === tower.level && tower.level < MAX_LEVEL) {
+          const oldIndex = state.selected;
+          tower.level += 1;
+          tower.cooldown = 0;
+          state.towers[oldIndex] = null;
+          state.selected = index;
+          state.score += tower.level * 25;
+          const p = slotPosition(index);
+          burst(p.x, p.y, "#f5c451", 24);
+          notify("鍚堟垚涓?" + tower.level + " 绾х偖濉?);
+        } else if (tower.level >= MAX_LEVEL && selectedTower && selectedTower.level === tower.level) {
+          notify("宸茶揪鍒版渶楂樼瓑绾?);
+          state.selected = index;
+        } else {
+          state.selected = index;
+          notify(tower.level + " 绾х偖濉斿凡閫変腑");
+        }
+      }
+      updateHud();
+    }
+
+    function sellSelected() {
+      if (state.selected < 0) return;
+      const tower = state.towers[state.selected];
+      if (!tower) return;
+      const refund = 8 * Math.pow(2, tower.level - 1);
+      state.coins += refund;
+      state.towers[state.selected] = null;
+      state.selected = -1;
+      notify("鍑哄敭鑾峰緱 " + refund + " 閲戝竵");
+      updateHud();
+    }
+
+    function slotAt(x, y) {
+      for (let i = 0; i < state.towers.length; i += 1) {
+        const p = slotPosition(i);
+        if (Math.hypot(x - p.x, y - p.y) <= p.radius + 9) return i;
+      }
+      return -1;
+    }
+
+    function shoot(index, tower, target) {
+      const p = slotPosition(index);
+      const stats = towerStats(tower.level);
+      state.bullets.push({
+        x: p.x,
+        y: p.y,
+        targetId: target.id,
+        damage: stats.damage,
+        speed: 510,
+        color: tower.level >= 5 ? "#f5c451" : tower.level >= 3 ? "#66a8ff" : "#57d3a0"
+      });
+      tower.cooldown = stats.interval;
+    }
+
+    function updateTowers(dt) {
+      state.towers.forEach((tower, index) => {
+        if (!tower) return;
+        tower.cooldown -= dt;
+        if (tower.cooldown > 0) return;
+        const p = slotPosition(index);
+        const range = towerStats(tower.level).range;
+        let target = null;
+        let progress = -Infinity;
+        state.enemies.forEach(enemy => {
+          const distance = Math.hypot(enemy.x - p.x, enemy.y - p.y);
+          if (distance <= range && enemy.x > progress) {
+            target = enemy;
+            progress = enemy.x;
+          }
+        });
+        if (target) shoot(index, tower, target);
+      });
+    }
+
+    function updateBullets(dt) {
+      for (let i = state.bullets.length - 1; i >= 0; i -= 1) {
+        const bullet = state.bullets[i];
+        const target = state.enemies.find(e => e.id === bullet.targetId);
+        if (!target) {
+          state.bullets.splice(i, 1);
+          continue;
+        }
+        const dx = target.x - bullet.x;
+        const dy = target.y - bullet.y;
+        const distance = Math.hypot(dx, dy);
+        const step = bullet.speed * dt;
+        if (distance <= step + target.radius) {
+          target.hp -= bullet.damage;
+          burst(target.x, target.y, bullet.color, 4);
+          state.bullets.splice(i, 1);
+        } else {
+          bullet.x += dx / distance * step;
+          bullet.y += dy / distance * step;
+        }
+      }
+    }
+
+    function updateEnemies(dt) {
+      for (let i = state.enemies.length - 1; i >= 0; i -= 1) {
+        const enemy = state.enemies[i];
+        if (enemy.hp <= 0) {
+          state.coins += enemy.reward;
+          state.score += Math.round((enemy.boss ? 180 : 18) + state.wave * (enemy.boss ? 20 : 3));
+          burst(enemy.x, enemy.y, enemy.boss ? "#f5c451" : "#f06d68", enemy.boss ? 32 : 13);
+          state.enemies.splice(i, 1);
+          continue;
+        }
+        enemy.x += enemy.speed * dt;
+        if (enemy.x - enemy.radius > width) {
+          state.core -= enemy.damage;
+          burst(width - 8, enemy.y, "#f06d68", 18);
+          state.enemies.splice(i, 1);
+          if (state.core <= 0) {
+            state.core = 0;
+            gameOver();
+            return;
+          }
+        }
+      }
+    }
+
+    function burst(x, y, color, amount) {
+      for (let i = 0; i < amount; i += 1) {
+        const angle = Math.random() * Math.PI * 2;
+        const speed = 25 + Math.random() * 85;
+        state.particles.push({
+          x, y, color,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed,
+          life: .35 + Math.random() * .45
+        });
+      }
+    }
+
+    function updateParticles(dt) {
+      for (let i = state.particles.length - 1; i >= 0; i -= 1) {
+        const p = state.particles[i];
+        p.life -= dt;
+        if (p.life <= 0) state.particles.splice(i, 1);
+        else {
+          p.x += p.vx * dt;
+          p.y += p.vy * dt;
+          p.vx *= .96;
+          p.vy *= .96;
+        }
+      }
+    }
+
+    function update(dt) {
+      if (state.spawned < state.waveTotal) {
+        state.spawnCooldown -= dt;
+        if (state.spawnCooldown <= 0) spawnEnemy();
+      }
+      updateTowers(dt);
+      updateBullets(dt);
+      updateEnemies(dt);
+      updateParticles(dt);
+      if (state.mode === "running" && state.spawned >= state.waveTotal && state.enemies.length === 0) {
+        state.mode = "between";
+        state.coins += 18 + state.wave * 2;
+        state.score += state.wave * 40;
+        state.selected = -1;
+        upgradeOverlay.hidden = false;
+      }
+      updateHud();
+    }
+
+    function drawBackground() {
+      ctx.fillStyle = "#17201e";
+      ctx.fillRect(0, 0, width, height);
+      ctx.strokeStyle = "rgba(110, 151, 133, .12)";
+      ctx.lineWidth = 1;
+      const grid = 40;
+      for (let x = 0; x < width; x += grid) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, height);
+        ctx.stroke();
+      }
+      for (let y = 0; y < height; y += grid) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(width, y);
+        ctx.stroke();
+      }
+      ctx.fillStyle = "rgba(240, 109, 104, .12)";
+      ctx.fillRect(width - 22, 0, 22, height);
+      ctx.fillStyle = "#f06d68";
+      ctx.fillRect(width - 5, 0, 5, height);
+    }
+
+    function drawSlots() {
+      state.towers.forEach((tower, index) => {
+        const p = slotPosition(index);
+        const selected = state.selected === index;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.radius + (selected ? 5 : 0), 0, Math.PI * 2);
+        ctx.fillStyle = selected ? "rgba(245, 196, 81, .16)" : "rgba(255,255,255,.035)";
+        ctx.fill();
+        ctx.strokeStyle = selected ? "#f5c451" : "rgba(154, 171, 165, .34)";
+        ctx.lineWidth = selected ? 3 : 1.5;
+        ctx.stroke();
+        if (!tower) {
+          ctx.fillStyle = "rgba(154, 171, 165, .42)";
+          ctx.font = "22px system-ui";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText("+", p.x, p.y - 1);
+          return;
+        }
+        const colors = ["#57d3a0", "#66a8ff", "#c27cff", "#f5c451", "#ff8b5f", "#f1f5f2"];
+        ctx.fillStyle = colors[tower.level - 1];
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.radius * .64, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = "#11171c";
+        ctx.fillRect(p.x - 5, p.y - p.radius * .95, 10, p.radius * .7);
+        ctx.fillStyle = "#11171c";
+        ctx.font = "800 13px system-ui";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(String(tower.level), p.x, p.y + 1);
+      });
+    }
+
+    function drawEnemies() {
+      state.enemies.forEach(enemy => {
+        ctx.fillStyle = enemy.boss ? "#f5c451" : "#f06d68";
+        ctx.beginPath();
+        ctx.arc(enemy.x, enemy.y, enemy.radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = "#2b1515";
+        ctx.beginPath();
+        ctx.arc(enemy.x + enemy.radius * .25, enemy.y - enemy.radius * .12, enemy.radius * .3, 0, Math.PI * 2);
+        ctx.fill();
+        const barWidth = enemy.radius * 2.2;
+        ctx.fillStyle = "rgba(0,0,0,.48)";
+        ctx.fillRect(enemy.x - barWidth / 2, enemy.y - enemy.radius - 9, barWidth, 4);
+        ctx.fillStyle = enemy.boss ? "#f5c451" : "#57d3a0";
+        ctx.fillRect(enemy.x - barWidth / 2, enemy.y - enemy.radius - 9, barWidth * Math.max(0, enemy.hp / enemy.maxHp), 4);
+      });
+    }
+
+    function drawBullets() {
+      state.bullets.forEach(bullet => {
+        ctx.fillStyle = bullet.color;
+        ctx.beginPath();
+        ctx.arc(bullet.x, bullet.y, 4, 0, Math.PI * 2);
+        ctx.fill();
+      });
+    }
+
+    function drawParticles() {
+      state.particles.forEach(p => {
+        ctx.globalAlpha = Math.min(1, p.life * 2);
+        ctx.fillStyle = p.color;
+        ctx.fillRect(p.x - 2, p.y - 2, 4, 4);
+      });
+      ctx.globalAlpha = 1;
+    }
+
+    function drawPause() {
+      if (state.mode !== "paused") return;
+      ctx.fillStyle = "rgba(10, 13, 16, .65)";
+      ctx.fillRect(0, 0, width, height);
+      ctx.fillStyle = "#f1f5f2";
+      ctx.font = "800 28px system-ui";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText("宸叉殏鍋?, width / 2, height / 2);
+    }
+
+    function draw() {
+      drawBackground();
+      drawSlots();
+      drawEnemies();
+      drawBullets();
+      drawParticles();
+      drawPause();
+    }
+
+    function loop(now) {
+      const dt = Math.min(.033, Math.max(0, (now - lastTime) / 1000 || 0));
+      lastTime = now;
+      if (state.mode === "running") update(dt);
+      else if (state.particles.length) updateParticles(dt);
+      draw();
+      requestAnimationFrame(loop);
+    }
+
+    function togglePause() {
+      if (state.mode === "running") {
+        state.mode = "paused";
+      } else if (state.mode === "paused") {
+        state.mode = "running";
+        lastTime = performance.now();
+      }
+      updateHud();
+    }
+
+    function applyUpgrade(type) {
+      if (type === "damage") state.damageBoost *= 1.18;
+      if (type === "speed") state.speedBoost *= 1.14;
+      if (type === "repair") {
+        state.core = Math.min(100, state.core + 28);
+        state.coins += 20;
+      }
+      startWave();
+    }
+
+    function gameOver() {
+      state.mode = "gameover";
+      state.enemies = [];
+      state.bullets = [];
+      state.selected = -1;
+      mainTitle.textContent = "鍩庡澶卞畧";
+      mainText.textContent = "浣犲畧鍒颁簡绗?" + state.wave + " 娉紝鑾峰緱 " + state.score + " 鍒嗐€?;
+      mainAction.textContent = "鍐嶅畧涓€娆?;
+      nameInput.value = localStorage.getItem("mergeDefenseName") || "";
+      scoreForm.hidden = false;
+      mainOverlay.hidden = false;
+      updateHud();
+    }
+
+    async function submitScore() {
+      if (state.scoreSubmitted) return;
+      const name = nameInput.value.trim().slice(0, 20);
+      if (!name) {
+        submitState.textContent = "璇峰厛杈撳叆鏄电О";
+        nameInput.focus();
+        return;
+      }
+      const sb = getClient();
+      if (!sb) {
+        submitState.textContent = "鎺掕姒滄湇鍔″姞杞藉け璐ワ紝璇锋鏌ョ綉缁?;
+        return;
+      }
+      submitBtn.disabled = true;
+      submitState.textContent = "姝ｅ湪鎻愪氦...";
+      const { error } = await sb.from(SCORE_TABLE).insert({
+        name,
+        score: state.score,
+        wave: Math.max(1, state.wave)
+      });
+      if (error) {
+        submitState.textContent = "鎻愪氦澶辫触锛? + error.message;
+        submitBtn.disabled = false;
+        return;
+      }
+      localStorage.setItem("mergeDefenseName", name);
+      state.scoreSubmitted = true;
+      submitBtn.textContent = "宸叉彁浜?;
+      submitState.textContent = "鎴愮哗宸茶繘鍏ュ叕鍏辨帓琛屾";
+    }
+
+    function escapeHtml(value) {
+      return String(value).replace(/[&<>"']/g, char => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;"
+      })[char]);
+    }
+
+    async function loadLeaderboard() {
+      leaderboardList.innerHTML = '<li><span class="player">鍔犺浇涓?..</span></li>';
+      const sb = getClient();
+      if (!sb) {
+        leaderboardList.innerHTML = '<li><span class="player">鎺掕姒滄湇鍔″姞杞藉け璐?/span></li>';
+        return;
+      }
+      const { data, error } = await sb
+        .from(SCORE_TABLE)
+        .select("name,score,wave,created_at")
+        .order("score", { ascending: false })
+        .order("wave", { ascending: false })
+        .limit(10);
+      if (error) {
+        leaderboardList.innerHTML = '<li><span class="player">璇诲彇澶辫触锛? + escapeHtml(error.message) + '</span></li>';
+        return;
+      }
+      if (!data || !data.length) {
+        leaderboardList.innerHTML = '<li><span class="player">杩樻病鏈夋垚缁╋紝绛変綘鎷夸笅绗竴鍚?/span></li>';
+        return;
+      }
+      leaderboardList.innerHTML = data.map((row, index) =>
+        '<li><span class="rank">' + (index + 1) + '</span>' +
+        '<span class="player">' + escapeHtml(row.name) + '</span>' +
+        '<span class="result">' + row.score + '<small>绗?' + row.wave + ' 娉?/small></span></li>'
+      ).join("");
+    }
+
+    canvas.addEventListener("pointerdown", event => {
+      if (state.mode !== "running" && state.mode !== "paused") return;
+      const rect = canvas.getBoundingClientRect();
+      const x = (event.clientX - rect.left) * (width / rect.width);
+      const y = (event.clientY - rect.top) * (height / rect.height);
+      const index = slotAt(x, y);
+      if (index >= 0) handleSlot(index);
+    });
+
+    buyBtn.addEventListener("click", () => buyTower());
+    sellBtn.addEventListener("click", sellSelected);
+    pauseBtn.addEventListener("click", togglePause);
+    mainAction.addEventListener("click", resetGame);
+    submitBtn.addEventListener("click", submitScore);
+    document.querySelectorAll(".upgrade").forEach(button => {
+      button.addEventListener("click", () => applyUpgrade(button.dataset.upgrade));
+    });
+    document.getElementById("leaderboardBtn").addEventListener("click", () => {
+      resumeAfterLeaderboard = state.mode === "running";
+      if (resumeAfterLeaderboard) state.mode = "paused";
+      updateHud();
+      leaderboardOverlay.hidden = false;
+      loadLeaderboard();
+    });
+    document.getElementById("closeLeaderboard").addEventListener("click", () => {
+      leaderboardOverlay.hidden = true;
+      if (resumeAfterLeaderboard && state.mode === "paused") {
+        state.mode = "running";
+        lastTime = performance.now();
+      }
+      resumeAfterLeaderboard = false;
+      updateHud();
+    });
+    window.addEventListener("resize", resize);
+    document.addEventListener("visibilitychange", () => {
+      if (document.hidden && state.mode === "running") togglePause();
+    });
+
+    resize();
+    updateHud();
+    lastTime = performance.now();
+    requestAnimationFrame(loop);
+  })();
+  </script>
+</body>
+</html>
+
