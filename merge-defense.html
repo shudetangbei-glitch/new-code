@@ -246,7 +246,7 @@
     }
   </style>
 </head>
-<body data-build="2026-07-25-v2-utf8">
+<body data-build="2026-07-25-v3-levels">
   <main class="app">
     <header class="topbar">
       <div class="brand">
@@ -260,9 +260,9 @@
     </header>
 
     <section class="hud" aria-label="游戏状态">
-      <div class="stat"><span class="stat-label">波次</span><span class="stat-value" id="waveEl">0</span></div>
+      <div class="stat"><span class="stat-label">关卡</span><span class="stat-value" id="waveEl">0-0</span></div>
       <div class="stat"><span class="stat-label">城墙</span><span class="stat-value" id="coreEl">100</span></div>
-      <div class="stat"><span class="stat-label">金币</span><span class="stat-value" id="coinsEl">80</span></div>
+      <div class="stat"><span class="stat-label">金币</span><span class="stat-value" id="coinsEl">60</span></div>
       <div class="stat"><span class="stat-label">敌人</span><span class="stat-value" id="enemyEl">0</span></div>
       <div class="stat"><span class="stat-label">总分</span><span class="stat-value" id="scoreEl">0</span></div>
     </section>
@@ -274,7 +274,7 @@
 
     <section class="controls">
       <div class="legend"><strong>同级炮塔</strong><span>连续点选即可合成</span></div>
-      <button class="command primary" id="buyBtn" type="button" disabled>部署炮塔 · 20</button>
+      <button class="command primary" id="buyBtn" type="button" disabled>部署炮塔 · 25</button>
       <button class="command danger" id="sellBtn" type="button" disabled>出售</button>
     </section>
   </main>
@@ -296,12 +296,12 @@
 
   <div class="overlay" id="upgradeOverlay" hidden>
     <section class="dialog">
-      <h2>波次完成</h2>
-      <p>选择一项增援，下一波将立刻开始。</p>
+      <h2 id="upgradeTitle">关卡完成</h2>
+      <p id="upgradeText">选择一项增援，下一关将立刻开始。</p>
       <div class="upgrade-grid">
-        <button class="upgrade" type="button" data-upgrade="damage"><strong>强化弹药</strong><span>所有炮塔伤害提高 18%</span></button>
-        <button class="upgrade" type="button" data-upgrade="speed"><strong>快速装填</strong><span>所有炮塔射速提高 14%</span></button>
-        <button class="upgrade" type="button" data-upgrade="repair"><strong>紧急维修</strong><span>恢复 28 点城墙并获得 20 金币</span></button>
+        <button class="upgrade" type="button" data-upgrade="damage"><strong>强化弹药</strong><span>所有炮塔伤害提高 12%</span></button>
+        <button class="upgrade" type="button" data-upgrade="speed"><strong>快速装填</strong><span>所有炮塔射速提高 10%</span></button>
+        <button class="upgrade" type="button" data-upgrade="repair"><strong>紧急维修</strong><span>恢复 20 点城墙并获得 12 金币</span></button>
       </div>
     </section>
   </div>
@@ -325,7 +325,7 @@
     const SUPABASE_URL = "https://jgfixbzsnblfcomjmxuc.supabase.co";
     const SUPABASE_KEY = "sb_publishable_trShHiFmgx3kTz_1kZPKqQ_qzMbAQnl";
     const SCORE_TABLE = "merge_defense_scores";
-    const TOWER_COST = 20;
+    const TOWER_COST = 25;
     const MAX_LEVEL = 6;
     const canvas = document.getElementById("game");
     const ctx = canvas.getContext("2d");
@@ -347,6 +347,8 @@
     const submitBtn = document.getElementById("submitBtn");
     const submitState = document.getElementById("submitState");
     const upgradeOverlay = document.getElementById("upgradeOverlay");
+    const upgradeTitle = document.getElementById("upgradeTitle");
+    const upgradeText = document.getElementById("upgradeText");
     const leaderboardOverlay = document.getElementById("leaderboardOverlay");
     const leaderboardList = document.getElementById("leaderboardList");
 
@@ -363,7 +365,7 @@
       mode: "ready",
       wave: 0,
       core: 100,
-      coins: 80,
+      coins: 60,
       score: 0,
       spawned: 0,
       waveTotal: 0,
@@ -415,7 +417,7 @@
     }
 
     function updateHud() {
-      waveEl.textContent = state.wave;
+      waveEl.textContent = state.wave ? Math.ceil(state.wave / 3) + "-" + ((state.wave - 1) % 3 + 1) : "0-0";
       coreEl.textContent = Math.max(0, Math.ceil(state.core));
       coinsEl.textContent = state.coins;
       enemyEl.textContent = state.enemies.length + Math.max(0, state.waveTotal - state.spawned);
@@ -440,7 +442,7 @@
       state.mode = "running";
       state.wave = 0;
       state.core = 100;
-      state.coins = 80;
+      state.coins = 60;
       state.score = 0;
       state.spawned = 0;
       state.waveTotal = 0;
@@ -463,42 +465,55 @@
 
     function startWave() {
       state.wave += 1;
+      const chapter = Math.ceil(state.wave / 3);
+      const stage = (state.wave - 1) % 3 + 1;
       state.spawned = 0;
-      state.waveTotal = 6 + state.wave * 2 + (state.wave % 5 === 0 ? 1 : 0);
-      state.spawnCooldown = .6;
+      state.waveTotal = 7 + state.wave * 2 + chapter * 2 + (stage === 3 ? 1 : 0);
+      state.spawnCooldown = .45;
       state.mode = "running";
       upgradeOverlay.hidden = true;
       lastTime = performance.now();
-      notify(state.wave % 5 === 0 ? "Boss 波次来袭" : "第 " + state.wave + " 波");
+      notify(stage === 3 ? "第 " + chapter + " 章终关 · Boss 来袭" : "第 " + chapter + " 章 · 第 " + stage + " 关");
       updateHud();
     }
 
     function spawnEnemy() {
-      const boss = state.wave % 5 === 0 && state.spawned === state.waveTotal - 1;
+      const stage = (state.wave - 1) % 3 + 1;
+      const boss = stage === 3 && state.spawned === state.waveTotal - 1;
       const lane = Math.floor(Math.random() * 3);
-      const hpBase = 45 + state.wave * 14;
-      const hp = boss ? hpBase * 7 : hpBase * (.82 + Math.random() * .36);
+      const roll = Math.random();
+      let type = "normal";
+      if (!boss && state.wave >= 3 && roll < Math.min(.12 + state.wave * .012, .34)) type = "tank";
+      else if (!boss && state.wave >= 2 && roll > .72) type = "runner";
+      if (boss) type = "boss";
+      const hpBase = 42 * Math.pow(1.28, state.wave - 1);
+      const hpFactor = type === "boss" ? 8.5 : type === "tank" ? 2.5 : type === "runner" ? .58 : 1;
+      const speedBase = .041 + Math.min(.038, state.wave * .0022);
+      const speedFactor = type === "boss" ? .5 : type === "tank" ? .62 : type === "runner" ? 1.7 : 1;
+      const rewardBase = 4 + Math.floor(state.wave / 4);
+      const hp = hpBase * hpFactor * (.9 + Math.random() * .2);
       state.enemies.push({
         id: ++enemyId,
         x: -35,
         y: height * (.18 + lane * .32),
-        radius: boss ? 24 : 14 + Math.min(5, state.wave * .15),
+        radius: type === "boss" ? 25 : type === "tank" ? 19 : type === "runner" ? 11 : 14,
         hp,
         maxHp: hp,
-        speed: (boss ? 23 : 34 + Math.min(36, state.wave * 1.8)) * (height / 500),
-        damage: boss ? 35 : 10,
-        reward: boss ? 55 : 7 + Math.floor(state.wave / 3),
-        boss
+        speed: speedBase * speedFactor,
+        damage: Math.round((10 + state.wave * 1.4) * (type === "boss" ? 3.2 : type === "tank" ? 1.45 : .95)),
+        reward: Math.round(rewardBase * (type === "boss" ? 9 : type === "tank" ? 2 : type === "runner" ? .8 : 1)),
+        boss,
+        type
       });
       state.spawned += 1;
-      state.spawnCooldown = Math.max(.32, 1.05 - state.wave * .025);
+      state.spawnCooldown = Math.max(.28, .95 - state.wave * .032);
     }
 
     function towerStats(level) {
       return {
-        damage: (15 + level * 8) * Math.pow(1.43, level - 1) * state.damageBoost,
-        interval: Math.max(.18, (.86 - level * .055) / state.speedBoost),
-        range: 145 + level * 13
+        damage: (12 + level * 7) * Math.pow(1.38, level - 1) * state.damageBoost,
+        interval: Math.max(.2, (.88 - level * .05) / state.speedBoost),
+        range: Math.max(90, width * (.17 + level * .015))
       };
     }
 
@@ -587,7 +602,7 @@
         y: p.y,
         targetId: target.id,
         damage: stats.damage,
-        speed: 510,
+        speed: width * .78,
         color: tower.level >= 5 ? "#f5c451" : tower.level >= 3 ? "#66a8ff" : "#57d3a0"
       });
       tower.cooldown = stats.interval;
@@ -641,12 +656,12 @@
         const enemy = state.enemies[i];
         if (enemy.hp <= 0) {
           state.coins += enemy.reward;
-          state.score += Math.round((enemy.boss ? 180 : 18) + state.wave * (enemy.boss ? 20 : 3));
-          burst(enemy.x, enemy.y, enemy.boss ? "#f5c451" : "#f06d68", enemy.boss ? 32 : 13);
+          state.score += Math.round((enemy.boss ? 220 : enemy.type === "tank" ? 34 : enemy.type === "runner" ? 24 : 18) + state.wave * (enemy.boss ? 24 : 4));
+          burst(enemy.x, enemy.y, enemy.boss ? "#f5c451" : enemy.type === "tank" ? "#9b86d7" : "#f06d68", enemy.boss ? 32 : 13);
           state.enemies.splice(i, 1);
           continue;
         }
-        enemy.x += enemy.speed * dt;
+        enemy.x += enemy.speed * width * dt;
         if (enemy.x - enemy.radius > width) {
           state.core -= enemy.damage;
           burst(width - 8, enemy.y, "#f06d68", 18);
@@ -698,9 +713,15 @@
       updateParticles(dt);
       if (state.mode === "running" && state.spawned >= state.waveTotal && state.enemies.length === 0) {
         state.mode = "between";
-        state.coins += 18 + state.wave * 2;
+        state.coins += 10 + state.wave;
         state.score += state.wave * 40;
         state.selected = -1;
+        const chapter = Math.ceil(state.wave / 3);
+        const stage = (state.wave - 1) % 3 + 1;
+        upgradeTitle.textContent = "第 " + chapter + "-" + stage + " 关完成";
+        upgradeText.textContent = stage === 3
+          ? "新章节敌人生命、速度和重甲比例都会明显提高。"
+          : "下一关敌人更强，选择一项增援后继续。";
         upgradeOverlay.hidden = false;
       }
       updateHud();
@@ -766,7 +787,8 @@
 
     function drawEnemies() {
       state.enemies.forEach(enemy => {
-        ctx.fillStyle = enemy.boss ? "#f5c451" : "#f06d68";
+        const enemyColor = enemy.type === "boss" ? "#f5c451" : enemy.type === "tank" ? "#9b86d7" : enemy.type === "runner" ? "#66a8ff" : "#f06d68";
+        ctx.fillStyle = enemyColor;
         ctx.beginPath();
         ctx.arc(enemy.x, enemy.y, enemy.radius, 0, Math.PI * 2);
         ctx.fill();
@@ -777,7 +799,7 @@
         const barWidth = enemy.radius * 2.2;
         ctx.fillStyle = "rgba(0,0,0,.48)";
         ctx.fillRect(enemy.x - barWidth / 2, enemy.y - enemy.radius - 9, barWidth, 4);
-        ctx.fillStyle = enemy.boss ? "#f5c451" : "#57d3a0";
+        ctx.fillStyle = enemy.type === "boss" ? "#f5c451" : enemy.type === "tank" ? "#c7b7ff" : "#57d3a0";
         ctx.fillRect(enemy.x - barWidth / 2, enemy.y - enemy.radius - 9, barWidth * Math.max(0, enemy.hp / enemy.maxHp), 4);
       });
     }
@@ -840,11 +862,11 @@
     }
 
     function applyUpgrade(type) {
-      if (type === "damage") state.damageBoost *= 1.18;
-      if (type === "speed") state.speedBoost *= 1.14;
+      if (type === "damage") state.damageBoost *= 1.12;
+      if (type === "speed") state.speedBoost *= 1.10;
       if (type === "repair") {
-        state.core = Math.min(100, state.core + 28);
-        state.coins += 20;
+        state.core = Math.min(100, state.core + 20);
+        state.coins += 12;
       }
       startWave();
     }
@@ -855,7 +877,7 @@
       state.bullets = [];
       state.selected = -1;
       mainTitle.textContent = "城墙失守";
-      mainText.textContent = "你守到了第 " + state.wave + " 波，获得 " + state.score + " 分。";
+      mainText.textContent = "你守到了第 " + Math.ceil(state.wave / 3) + "-" + ((state.wave - 1) % 3 + 1) + " 关，获得 " + state.score + " 分。";
       mainAction.textContent = "再守一次";
       nameInput.value = localStorage.getItem("mergeDefenseName") || "";
       scoreForm.hidden = false;
@@ -924,7 +946,7 @@
       leaderboardList.innerHTML = data.map((row, index) =>
         '<li><span class="rank">' + (index + 1) + '</span>' +
         '<span class="player">' + escapeHtml(row.name) + '</span>' +
-        '<span class="result">' + row.score + '<small>第 ' + row.wave + ' 波</small></span></li>'
+        '<span class="result">' + row.score + '<small>第 ' + Math.ceil(row.wave / 3) + '-' + ((row.wave - 1) % 3 + 1) + ' 关</small></span></li>'
       ).join("");
     }
 
