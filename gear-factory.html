@@ -1,0 +1,775 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#17191b">
+  <title>齿轮工厂</title>
+  <style>
+    :root {
+      --bg: #17191b;
+      --panel: #222629;
+      --panel2: #2a3033;
+      --line: #434b4f;
+      --text: #f4f1e8;
+      --muted: #a7ada9;
+      --yellow: #f1c75b;
+      --cyan: #5fc9c1;
+      --red: #ef746f;
+      --steel: #9aa8b1;
+    }
+    * { box-sizing: border-box; }
+    html, body { min-height: 100%; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Microsoft YaHei", sans-serif;
+      overscroll-behavior: none;
+    }
+    button, input { font: inherit; }
+    button { color: inherit; }
+    .app { width: min(100% - 24px, 1020px); margin: 0 auto; padding: 16px 0 30px; }
+    .topbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 11px; }
+    h1 { margin: 0; font-size: 25px; letter-spacing: 0; }
+    .subtitle { margin: 3px 0 0; color: var(--muted); font-size: 12px; }
+    .tools { display: flex; gap: 7px; }
+    .icon-btn {
+      width: 41px; height: 41px; display: grid; place-items: center;
+      border: 1px solid var(--line); border-radius: 7px; background: var(--panel);
+      cursor: pointer; font-size: 18px;
+    }
+    .hud {
+      display: grid; grid-template-columns: repeat(5, 1fr);
+      border: 1px solid var(--line); border-radius: 8px; overflow: hidden; margin-bottom: 9px;
+    }
+    .stat { min-width: 0; padding: 8px 10px; background: var(--panel); border-right: 1px solid var(--line); }
+    .stat:last-child { border-right: 0; }
+    .label { display: block; color: var(--muted); font-size: 10px; }
+    .value { display: block; margin-top: 2px; font-size: 18px; font-weight: 800; overflow: hidden; text-overflow: ellipsis; }
+    .factory { position: relative; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: #202728; }
+    canvas { display: block; width: 100%; height: min(62vh, 560px); min-height: 420px; touch-action: manipulation; }
+    .toast {
+      position: absolute; top: 10px; left: 50%; translate: -50% 0;
+      max-width: calc(100% - 20px); padding: 7px 11px; border: 1px solid rgba(255,255,255,.15);
+      border-radius: 6px; background: rgba(18,21,22,.92); font-size: 12px;
+      opacity: 0; transition: opacity .16s; pointer-events: none; white-space: nowrap;
+      overflow: hidden; text-overflow: ellipsis;
+    }
+    .toast.show { opacity: 1; }
+    .controls {
+      display: grid; grid-template-columns: minmax(0, 1fr) auto auto;
+      gap: 8px; align-items: stretch; margin-top: 9px;
+    }
+    .gear-picker {
+      display: grid; grid-template-columns: repeat(3, 1fr);
+      border: 1px solid var(--line); border-radius: 7px; overflow: hidden;
+    }
+    .gear-choice {
+      min-width: 0; min-height: 47px; border: 0; border-right: 1px solid var(--line);
+      background: var(--panel); cursor: pointer; font-weight: 750;
+    }
+    .gear-choice:last-child { border-right: 0; }
+    .gear-choice.active { background: var(--yellow); color: #29220e; }
+    .gear-choice:disabled { opacity: .35; cursor: default; }
+    .gear-choice small { display: block; font-size: 10px; font-weight: 550; }
+    .command {
+      min-height: 47px; border: 1px solid var(--line); border-radius: 7px;
+      padding: 0 14px; background: var(--panel); cursor: pointer; font-weight: 750;
+    }
+    .command.primary { background: var(--cyan); border-color: #4aa79f; color: #08211f; }
+    .level-strip {
+      display: flex; gap: 6px; overflow-x: auto; margin-top: 9px; padding: 1px 0 5px;
+      scrollbar-width: thin;
+    }
+    .level-btn {
+      flex: 0 0 38px; height: 34px; border: 1px solid var(--line); border-radius: 6px;
+      background: var(--panel); cursor: pointer; font-size: 12px;
+    }
+    .level-btn.active { background: var(--yellow); color: #29220e; border-color: var(--yellow); font-weight: 800; }
+    .level-btn:disabled { opacity: .28; cursor: default; }
+    .overlay {
+      position: fixed; inset: 0; z-index: 20; display: grid; place-items: center;
+      padding: 18px; background: rgba(8,10,11,.78);
+    }
+    .overlay[hidden] { display: none; }
+    .dialog {
+      width: min(100%, 430px); padding: 22px; border: 1px solid var(--line);
+      border-radius: 8px; background: var(--panel); box-shadow: 0 22px 65px rgba(0,0,0,.36);
+    }
+    .dialog h2 { margin: 0 0 8px; font-size: 23px; }
+    .dialog p { margin: 0 0 16px; color: var(--muted); font-size: 13px; line-height: 1.65; }
+    .dialog-actions { display: flex; gap: 8px; }
+    .dialog-actions .command { flex: 1; }
+    .score-line { display: grid; grid-template-columns: 1fr auto; gap: 8px; margin-top: 12px; }
+    .score-line[hidden] { display: none; }
+    .score-line input {
+      min-width: 0; min-height: 44px; border: 1px solid var(--line); border-radius: 7px;
+      padding: 0 11px; background: #15191b; color: var(--text); outline: none;
+    }
+    .score-line input:focus { border-color: var(--cyan); }
+    .submit-state { min-height: 18px; margin-top: 7px; color: var(--muted); font-size: 12px; }
+    .leaderboard { margin: 11px 0 16px; padding: 0; list-style: none; }
+    .leaderboard li {
+      display: grid; grid-template-columns: 26px minmax(0,1fr) auto; gap: 8px;
+      align-items: center; padding: 9px 2px; border-bottom: 1px solid var(--line); font-size: 13px;
+    }
+    .rank { color: var(--yellow); font-weight: 800; }
+    .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .score { color: var(--cyan); text-align: right; font-weight: 800; }
+    .score small { display: block; color: var(--muted); font-weight: 500; }
+    @media (max-width: 660px) {
+      .app { width: min(100% - 14px, 1020px); padding-top: 9px; }
+      .subtitle { display: none; }
+      h1 { font-size: 21px; }
+      .hud .stat { padding: 7px 4px; text-align: center; }
+      .value { font-size: 15px; }
+      canvas { height: 56vh; min-height: 400px; }
+      .controls { grid-template-columns: 1fr auto; }
+      .gear-picker { grid-column: 1 / -1; }
+      .command { padding: 0 11px; }
+    }
+  </style>
+</head>
+<body data-build="2026-07-25-gear-v1">
+  <main class="app">
+    <header class="topbar">
+      <div>
+        <h1>齿轮工厂</h1>
+        <p class="subtitle">选择正确尺寸，让动力抵达目标机器。</p>
+      </div>
+      <div class="tools">
+        <button class="icon-btn" id="leaderboardBtn" type="button" aria-label="公共排行榜" title="公共排行榜">🏆</button>
+        <button class="icon-btn" id="pauseBtn" type="button" aria-label="暂停" title="暂停" disabled>Ⅱ</button>
+      </div>
+    </header>
+
+    <section class="hud" aria-label="关卡状态">
+      <div class="stat"><span class="label">关卡</span><span class="value" id="levelEl">1/12</span></div>
+      <div class="stat"><span class="label">操作</span><span class="value" id="movesEl">0</span></div>
+      <div class="stat"><span class="label">时间</span><span class="value" id="timeEl">0</span></div>
+      <div class="stat"><span class="label">目标</span><span class="value" id="targetEl">顺时针</span></div>
+      <div class="stat"><span class="label">总分</span><span class="value" id="scoreEl">0</span></div>
+    </section>
+
+    <section class="factory">
+      <canvas id="board" aria-label="齿轮工厂装配台"></canvas>
+      <div class="toast" id="toast"></div>
+    </section>
+
+    <section class="controls">
+      <div class="gear-picker" id="gearPicker">
+        <button class="gear-choice active" type="button" data-size="S">小齿轮<small id="countS">0 个</small></button>
+        <button class="gear-choice" type="button" data-size="M">中齿轮<small id="countM">0 个</small></button>
+        <button class="gear-choice" type="button" data-size="L">大齿轮<small id="countL">0 个</small></button>
+      </div>
+      <button class="command" id="hintBtn" type="button">提示</button>
+      <button class="command" id="resetBtn" type="button">重置</button>
+    </section>
+    <nav class="level-strip" id="levelStrip" aria-label="关卡选择"></nav>
+  </main>
+
+  <div class="overlay" id="mainOverlay">
+    <section class="dialog">
+      <h2 id="dialogTitle">工厂启动</h2>
+      <p id="dialogText">选择齿轮尺寸，再点击空轴安装。点已安装的齿轮可以取回。让最右侧机器按目标方向和转速运行。</p>
+      <div class="score-line" id="scoreLine" hidden>
+        <input id="nameInput" maxlength="20" autocomplete="nickname" placeholder="输入排行榜昵称">
+        <button class="command primary" id="submitBtn" type="button">提交成绩</button>
+      </div>
+      <div class="submit-state" id="submitState"></div>
+      <div class="dialog-actions">
+        <button class="command primary" id="mainAction" type="button">开始装配</button>
+      </div>
+    </section>
+  </div>
+
+  <div class="overlay" id="leaderboardOverlay" hidden>
+    <section class="dialog">
+      <h2>公共排行榜</h2>
+      <p>优先比较总分，再比较通关关卡和用时。</p>
+      <ol class="leaderboard" id="leaderboard"></ol>
+      <div class="dialog-actions">
+        <button class="command" id="closeLeaderboard" type="button">关闭</button>
+      </div>
+    </section>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+  (() => {
+    "use strict";
+
+    const SUPABASE_URL = "https://jgfixbzsnblfcomjmxuc.supabase.co";
+    const SUPABASE_KEY = "sb_publishable_trShHiFmgx3kTz_1kZPKqQ_qzMbAQnl";
+    const TABLE = "gear_factory_scores";
+    const TOTAL_LEVELS = 12;
+    const LOGICAL_W = 760;
+    const LOGICAL_H = 480;
+    const SIZES = {
+      S: { radius: 20, teeth: 10, color: "#5fc9c1", label: "小" },
+      M: { radius: 28, teeth: 14, color: "#f1c75b", label: "中" },
+      L: { radius: 36, teeth: 18, color: "#9aa8b1", label: "大" }
+    };
+    const levelSpecs = [
+      { name: "第一动力", gears:["S"], angles:[0,0] },
+      { name: "尺寸配合", gears:["L","S"], angles:[0,0,0] },
+      { name: "转向练习", gears:["S","M","L"], angles:[.28,-.28,0,0] },
+      { name: "上行管线", gears:["L","S","M"], angles:[-.55,.2,.5,0], extra:{S:1} },
+      { name: "锁定轴承", gears:["S","L","M","S"], angles:[.35,-.35,.35,-.35,0], locked:[1] },
+      { name: "狭窄通道", gears:["M","S","L","S"], angles:[-.45,.45,-.45,.45,0], extra:{L:1} },
+      { name: "双重误导", gears:["L","M","S","L","S"], angles:[.3,-.3,.3,-.3,0,0], extra:{M:1} },
+      { name: "高速传动", gears:["S","S","L","M","S"], angles:[-.35,.35,-.35,.35,0,0], locked:[2] },
+      { name: "折返车间", gears:["L","S","M","L","S"], angles:[.55,-.25,-.45,.35,0,0], extra:{S:1,L:1} },
+      { name: "精密装配", gears:["S","L","M","S","L","M"], angles:[-.32,.32,-.32,.32,-.32,0,0], locked:[1,4], extra:{M:1} },
+      { name: "总装线", gears:["L","M","S","L","S","M"], angles:[.38,-.38,.38,-.38,.38,0,0], extra:{S:1,M:1} },
+      { name: "首席工程师", gears:["S","L","M","S","L","M","S"], angles:[-.3,.3,-.3,.3,-.3,.3,0,0], locked:[2,5], extra:{L:1,M:1} }
+    ];
+
+    const canvas = document.getElementById("board");
+    const ctx = canvas.getContext("2d");
+    const levelEl = document.getElementById("levelEl");
+    const movesEl = document.getElementById("movesEl");
+    const timeEl = document.getElementById("timeEl");
+    const targetEl = document.getElementById("targetEl");
+    const scoreEl = document.getElementById("scoreEl");
+    const toastEl = document.getElementById("toast");
+    const pauseBtn = document.getElementById("pauseBtn");
+    const mainOverlay = document.getElementById("mainOverlay");
+    const dialogTitle = document.getElementById("dialogTitle");
+    const dialogText = document.getElementById("dialogText");
+    const mainAction = document.getElementById("mainAction");
+    const scoreLine = document.getElementById("scoreLine");
+    const nameInput = document.getElementById("nameInput");
+    const submitBtn = document.getElementById("submitBtn");
+    const submitState = document.getElementById("submitState");
+    const leaderboardOverlay = document.getElementById("leaderboardOverlay");
+    const leaderboardEl = document.getElementById("leaderboard");
+    const levelStrip = document.getElementById("levelStrip");
+
+    let width = 1;
+    let height = 1;
+    let scale = 1;
+    let offsetX = 0;
+    let offsetY = 0;
+    let dpr = 1;
+    let last = performance.now();
+    let toastTimer = 0;
+    let client = null;
+    let resumeAfterBoard = false;
+    let selectedSize = "S";
+
+    const state = {
+      level: 0,
+      unlocked: Math.max(1, Math.min(TOTAL_LEVELS, Number(localStorage.getItem("gearFactoryUnlocked")) || 1)),
+      running: false,
+      paused: false,
+      completed: false,
+      moves: 0,
+      seconds: 0,
+      totalScore: 0,
+      totalMoves: 0,
+      totalSeconds: 0,
+      hints: 0,
+      pegs: [],
+      edges: [],
+      inventory: { S:0, M:0, L:0 },
+      expectedDirection: 1,
+      expectedRpm: 30,
+      submitted: false
+    };
+
+    function getClient() {
+      if (!client && window.supabase) client = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+      return client;
+    }
+
+    function resize() {
+      const rect = canvas.getBoundingClientRect();
+      width = Math.max(1, rect.width);
+      height = Math.max(1, rect.height);
+      scale = Math.min(width / LOGICAL_W, height / LOGICAL_H);
+      offsetX = (width - LOGICAL_W * scale) / 2;
+      offsetY = (height - LOGICAL_H * scale) / 2;
+      dpr = Math.min(window.devicePixelRatio || 1, 2);
+      canvas.width = Math.round(width * dpr);
+      canvas.height = Math.round(height * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      draw();
+    }
+
+    function logicalPoint(event) {
+      const rect = canvas.getBoundingClientRect();
+      return {
+        x: ((event.clientX - rect.left) * width / rect.width - offsetX) / scale,
+        y: ((event.clientY - rect.top) * height / rect.height - offsetY) / scale
+      };
+    }
+
+    function buildLevel(index) {
+      const spec = levelSpecs[index];
+      const motorR = SIZES.M.radius;
+      const targetSize = index >= 8 && index % 2 === 0 ? "L" : index >= 5 && index % 2 === 1 ? "S" : "M";
+      const targetR = SIZES[targetSize].radius;
+      const radii = spec.gears.map(size => SIZES[size].radius);
+      const allRadii = [motorR, ...radii, targetR];
+      const raw = [{ x:72, y:240 }];
+      for (let i = 0; i < allRadii.length - 1; i += 1) {
+        const distance = allRadii[i] + allRadii[i + 1] + 2;
+        const angle = spec.angles[i] || 0;
+        raw.push({
+          x: raw[i].x + Math.cos(angle) * distance,
+          y: raw[i].y + Math.sin(angle) * distance
+        });
+      }
+      const minX = Math.min(...raw.map(p => p.x));
+      const maxX = Math.max(...raw.map(p => p.x));
+      const minY = Math.min(...raw.map(p => p.y));
+      const maxY = Math.max(...raw.map(p => p.y));
+      const shiftX = (LOGICAL_W - (maxX - minX)) / 2 - minX;
+      const shiftY = (LOGICAL_H - (maxY - minY)) / 2 - minY;
+      const locked = new Set(spec.locked || []);
+      state.pegs = raw.map((point, i) => {
+        const intermediate = i > 0 && i < raw.length - 1;
+        const gearIndex = i - 1;
+        const lockedGear = intermediate && locked.has(gearIndex);
+        return {
+          x: point.x + shiftX,
+          y: point.y + shiftY,
+          role: i === 0 ? "motor" : i === raw.length - 1 ? "target" : "normal",
+          gear: i === 0 ? "M" : i === raw.length - 1 ? targetSize : lockedGear ? spec.gears[gearIndex] : null,
+          locked: i === 0 || i === raw.length - 1 || lockedGear,
+          solution: intermediate ? spec.gears[gearIndex] : null,
+          direction: 0,
+          rpm: 0,
+          connected: false
+        };
+      });
+      state.edges = state.pegs.slice(0, -1).map((_, i) => [i, i + 1]);
+      state.inventory = { S:0, M:0, L:0 };
+      spec.gears.forEach((size, i) => {
+        if (!locked.has(i)) state.inventory[size] += 1;
+      });
+      Object.entries(spec.extra || {}).forEach(([size, count]) => state.inventory[size] += count);
+      const edgeCount = spec.gears.length + 1;
+      state.expectedDirection = edgeCount % 2 === 0 ? 1 : -1;
+      state.expectedRpm = 30 * motorR / targetR;
+      computeTransmission();
+    }
+
+    function loadLevel(index, resetRun) {
+      state.level = index;
+      state.moves = 0;
+      state.seconds = 0;
+      state.hints = 0;
+      state.completed = false;
+      state.running = true;
+      state.paused = false;
+      if (resetRun) {
+        state.totalScore = 0;
+        state.totalMoves = 0;
+        state.totalSeconds = 0;
+        state.submitted = false;
+      }
+      buildLevel(index);
+      selectedSize = ["S","M","L"].find(size => state.inventory[size] > 0) || "S";
+      mainOverlay.hidden = true;
+      scoreLine.hidden = true;
+      submitState.textContent = "";
+      last = performance.now();
+      renderLevels();
+      updateHud();
+      draw();
+      notify("第 " + (index + 1) + " 关 · " + levelSpecs[index].name);
+    }
+
+    function renderLevels() {
+      levelStrip.innerHTML = "";
+      for (let i = 0; i < TOTAL_LEVELS; i += 1) {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "level-btn" + (i === state.level ? " active" : "");
+        button.textContent = i + 1;
+        button.disabled = i + 1 > state.unlocked;
+        button.addEventListener("click", () => loadLevel(i, true));
+        levelStrip.appendChild(button);
+      }
+    }
+
+    function updateHud() {
+      levelEl.textContent = (state.level + 1) + "/" + TOTAL_LEVELS;
+      movesEl.textContent = state.moves;
+      timeEl.textContent = Math.floor(state.seconds);
+      targetEl.textContent = (state.expectedDirection > 0 ? "顺" : "逆") + " " + Math.round(state.expectedRpm);
+      scoreEl.textContent = state.totalScore;
+      pauseBtn.disabled = !state.running || state.completed;
+      pauseBtn.textContent = state.paused ? "▶" : "Ⅱ";
+      pauseBtn.setAttribute("aria-label", state.paused ? "继续" : "暂停");
+      ["S","M","L"].forEach(size => {
+        document.getElementById("count" + size).textContent = state.inventory[size] + " 个";
+        const button = document.querySelector('[data-size="' + size + '"]');
+        button.disabled = state.inventory[size] <= 0;
+        button.classList.toggle("active", selectedSize === size);
+      });
+    }
+
+    function notify(text) {
+      toastEl.textContent = text;
+      toastEl.classList.add("show");
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => toastEl.classList.remove("show"), 1500);
+    }
+
+    function gearFits(a, b) {
+      if (!a.gear || !b.gear) return false;
+      const distance = Math.hypot(a.x - b.x, a.y - b.y);
+      const sum = SIZES[a.gear].radius + SIZES[b.gear].radius + 2;
+      return Math.abs(distance - sum) <= 3.2;
+    }
+
+    function computeTransmission() {
+      state.pegs.forEach(peg => {
+        peg.direction = 0;
+        peg.rpm = 0;
+        peg.connected = false;
+      });
+      const motor = state.pegs[0];
+      motor.direction = 1;
+      motor.rpm = 30;
+      motor.connected = true;
+      const queue = [0];
+      while (queue.length) {
+        const current = queue.shift();
+        state.edges.forEach(([a, b]) => {
+          let next = -1;
+          if (a === current) next = b;
+          if (b === current) next = a;
+          if (next < 0 || state.pegs[next].connected) return;
+          const from = state.pegs[current];
+          const to = state.pegs[next];
+          if (!gearFits(from, to)) return;
+          to.connected = true;
+          to.direction = -from.direction;
+          to.rpm = from.rpm * SIZES[from.gear].radius / SIZES[to.gear].radius;
+          queue.push(next);
+        });
+      }
+      const target = state.pegs[state.pegs.length - 1];
+      if (
+        state.running &&
+        !state.completed &&
+        target.connected &&
+        target.direction === state.expectedDirection &&
+        Math.abs(target.rpm - state.expectedRpm) < .2
+      ) completeLevel();
+    }
+
+    function placeOrRemove(index) {
+      if (!state.running || state.paused || state.completed) return;
+      const peg = state.pegs[index];
+      if (!peg || peg.locked) return;
+      if (peg.gear) {
+        state.inventory[peg.gear] += 1;
+        peg.gear = null;
+        state.moves += 1;
+        notify("已取回齿轮");
+      } else {
+        if (state.inventory[selectedSize] <= 0) return notify("这种齿轮已用完");
+        peg.gear = selectedSize;
+        state.inventory[selectedSize] -= 1;
+        state.moves += 1;
+        const next = ["S","M","L"].find(size => state.inventory[size] > 0);
+        if (next) selectedSize = next;
+      }
+      computeTransmission();
+      updateHud();
+    }
+
+    function completeLevel() {
+      state.completed = true;
+      state.running = false;
+      const levelScore = Math.max(100, 1100 - state.moves * 28 - Math.floor(state.seconds) * 5 - state.hints * 140);
+      state.totalScore += levelScore;
+      state.totalMoves += state.moves;
+      state.totalSeconds += Math.floor(state.seconds);
+      state.unlocked = Math.max(state.unlocked, Math.min(TOTAL_LEVELS, state.level + 2));
+      localStorage.setItem("gearFactoryUnlocked", state.unlocked);
+      setTimeout(() => {
+        dialogTitle.textContent = state.level === TOTAL_LEVELS - 1 ? "全部投产" : "传动成功";
+        dialogText.textContent = "本关 " + levelScore + " 分，使用 " + state.moves + " 次操作，用时 " + Math.floor(state.seconds) + " 秒。";
+        mainAction.textContent = state.level === TOTAL_LEVELS - 1 ? "重新挑战" : "下一关";
+        if (state.level === TOTAL_LEVELS - 1) {
+          scoreLine.hidden = false;
+          nameInput.value = localStorage.getItem("gearFactoryName") || "";
+        }
+        mainOverlay.hidden = false;
+        renderLevels();
+        updateHud();
+      }, 550);
+    }
+
+    function resetCurrent() {
+      loadLevel(state.level, false);
+      notify("本关已重置");
+    }
+
+    function useHint() {
+      if (!state.running || state.paused || state.completed) return;
+      const wrong = state.pegs.find(peg => peg.role === "normal" && !peg.locked && peg.gear !== peg.solution);
+      if (!wrong) return notify("当前安装已经正确");
+      state.hints += 1;
+      notify("闪烁轴位需要安装" + SIZES[wrong.solution].label + "齿轮");
+      wrong.hintUntil = performance.now() + 1800;
+    }
+
+    function drawGear(peg, angle) {
+      const spec = SIZES[peg.gear];
+      const r = spec.radius;
+      const teeth = spec.teeth;
+      ctx.save();
+      ctx.translate(peg.x, peg.y);
+      ctx.rotate(angle);
+      ctx.beginPath();
+      for (let i = 0; i < teeth * 2; i += 1) {
+        const a = i * Math.PI / teeth;
+        const radius = i % 2 === 0 ? r + 5 : r;
+        const x = Math.cos(a) * radius;
+        const y = Math.sin(a) * radius;
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.closePath();
+      ctx.fillStyle = peg.connected ? spec.color : "#687276";
+      ctx.fill();
+      ctx.strokeStyle = peg.locked ? "#f4f1e8" : "rgba(0,0,0,.35)";
+      ctx.lineWidth = peg.locked ? 2.5 : 1.5;
+      ctx.stroke();
+      ctx.fillStyle = "#202526";
+      ctx.beginPath();
+      ctx.arc(0, 0, Math.max(6, r * .25), 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, width, height);
+      ctx.fillStyle = "#202728";
+      ctx.fillRect(0, 0, width, height);
+      ctx.save();
+      ctx.translate(offsetX, offsetY);
+      ctx.scale(scale, scale);
+      ctx.strokeStyle = "rgba(130,150,145,.12)";
+      ctx.lineWidth = 1;
+      for (let x = 0; x <= LOGICAL_W; x += 40) {
+        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, LOGICAL_H); ctx.stroke();
+      }
+      for (let y = 0; y <= LOGICAL_H; y += 40) {
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(LOGICAL_W, y); ctx.stroke();
+      }
+      state.edges.forEach(([a,b]) => {
+        const p = state.pegs[a], q = state.pegs[b];
+        ctx.setLineDash([5,6]);
+        ctx.strokeStyle = gearFits(p,q) ? "rgba(95,201,193,.45)" : "rgba(167,173,169,.2)";
+        ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(p.x,p.y); ctx.lineTo(q.x,q.y); ctx.stroke();
+      });
+      ctx.setLineDash([]);
+      const now = performance.now();
+      state.pegs.forEach((peg, index) => {
+        const hint = peg.hintUntil && peg.hintUntil > now;
+        if (hint) {
+          ctx.fillStyle = "rgba(239,116,111,.2)";
+          ctx.beginPath(); ctx.arc(peg.x,peg.y,45 + Math.sin(now/100)*4,0,Math.PI*2); ctx.fill();
+        }
+        if (peg.role === "normal" && !peg.gear) {
+          ctx.strokeStyle = "#7f8b8f";
+          ctx.lineWidth = 2;
+          ctx.beginPath(); ctx.arc(peg.x,peg.y,15,0,Math.PI*2); ctx.stroke();
+          ctx.fillStyle = "#7f8b8f";
+          ctx.font = "700 18px system-ui";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText("+",peg.x,peg.y-1);
+        }
+        ctx.fillStyle = peg.role === "motor" ? "#ef746f" : peg.role === "target" ? "#5fc9c1" : "#758086";
+        ctx.beginPath(); ctx.arc(peg.x,peg.y,6,0,Math.PI*2); ctx.fill();
+        if (peg.gear) {
+          const rotation = peg.connected ? now / 1000 * peg.rpm / 7 * peg.direction : 0;
+          drawGear(peg, rotation);
+        }
+        if (peg.role !== "normal") {
+          ctx.fillStyle = "#f4f1e8";
+          ctx.font = "700 12px system-ui";
+          ctx.textAlign = "center";
+          ctx.fillText(peg.role === "motor" ? "动力" : "目标", peg.x, peg.y + SIZES[peg.gear].radius + 23);
+        } else if (peg.locked) {
+          ctx.fillStyle = "#f4f1e8";
+          ctx.font = "11px system-ui";
+          ctx.textAlign = "center";
+          ctx.fillText("锁定", peg.x, peg.y + SIZES[peg.gear].radius + 20);
+        }
+      });
+      const target = state.pegs[state.pegs.length - 1];
+      if (target) {
+        ctx.fillStyle = target.connected ? "#5fc9c1" : "#ef746f";
+        ctx.font = "700 13px system-ui";
+        ctx.textAlign = "right";
+        const current = target.connected ? (target.direction > 0 ? "顺" : "逆") + " " + Math.round(target.rpm) : "未连接";
+        ctx.fillText(current, LOGICAL_W - 18, 28);
+      }
+      if (state.paused) {
+        ctx.fillStyle = "rgba(10,12,13,.7)";
+        ctx.fillRect(0,0,LOGICAL_W,LOGICAL_H);
+        ctx.fillStyle = "#f4f1e8";
+        ctx.font = "800 28px system-ui";
+        ctx.textAlign = "center";
+        ctx.fillText("已暂停", LOGICAL_W/2,LOGICAL_H/2);
+      }
+      ctx.restore();
+    }
+
+    function loop(now) {
+      const dt = Math.min(.1, Math.max(0,(now-last)/1000));
+      last = now;
+      if (state.running && !state.paused) {
+        state.seconds += dt;
+        updateHud();
+      }
+      draw();
+      requestAnimationFrame(loop);
+    }
+
+    function togglePause() {
+      if (!state.running || state.completed) return;
+      state.paused = !state.paused;
+      last = performance.now();
+      updateHud();
+    }
+
+    function escapeHtml(value) {
+      return String(value).replace(/[&<>"']/g, char => ({
+        "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"
+      })[char]);
+    }
+
+    async function loadLeaderboard() {
+      leaderboardEl.innerHTML = '<li><span class="name">加载中...</span></li>';
+      const sb = getClient();
+      if (!sb) {
+        leaderboardEl.innerHTML = '<li><span class="name">排行榜服务加载失败</span></li>';
+        return;
+      }
+      const { data, error } = await sb.from(TABLE)
+        .select("name,score,level,moves,time_seconds,created_at")
+        .order("score",{ascending:false})
+        .order("level",{ascending:false})
+        .order("time_seconds",{ascending:true})
+        .limit(10);
+      if (error) {
+        leaderboardEl.innerHTML = '<li><span class="name">读取失败：' + escapeHtml(error.message) + '</span></li>';
+        return;
+      }
+      if (!data || !data.length) {
+        leaderboardEl.innerHTML = '<li><span class="name">还没有成绩，等你启动第一条生产线</span></li>';
+        return;
+      }
+      leaderboardEl.innerHTML = data.map((row,i) =>
+        '<li><span class="rank">' + (i+1) + '</span><span class="name">' + escapeHtml(row.name) +
+        '</span><span class="score">' + row.score + '<small>' + row.level + '关 · ' + row.time_seconds + '秒</small></span></li>'
+      ).join("");
+    }
+
+    async function submitScore() {
+      if (state.submitted) return;
+      const name = nameInput.value.trim().slice(0,20);
+      if (!name) {
+        submitState.textContent = "请输入昵称";
+        nameInput.focus();
+        return;
+      }
+      const sb = getClient();
+      if (!sb) {
+        submitState.textContent = "排行榜服务加载失败";
+        return;
+      }
+      submitBtn.disabled = true;
+      submitState.textContent = "正在提交...";
+      const { error } = await sb.from(TABLE).insert({
+        name,
+        score: state.totalScore,
+        level: TOTAL_LEVELS,
+        moves: state.totalMoves,
+        time_seconds: state.totalSeconds
+      });
+      if (error) {
+        submitState.textContent = "提交失败：" + error.message;
+        submitBtn.disabled = false;
+        return;
+      }
+      localStorage.setItem("gearFactoryName",name);
+      state.submitted = true;
+      submitBtn.textContent = "已提交";
+      submitState.textContent = "成绩已进入公共排行榜";
+    }
+
+    canvas.addEventListener("pointerdown", event => {
+      if (!state.running || state.paused || state.completed) return;
+      const point = logicalPoint(event);
+      let closest = -1;
+      let distance = Infinity;
+      state.pegs.forEach((peg,i) => {
+        const d = Math.hypot(point.x-peg.x,point.y-peg.y);
+        const hitRadius = peg.gear ? SIZES[peg.gear].radius + 8 : 25;
+        if (d <= hitRadius && d < distance) {
+          closest = i;
+          distance = d;
+        }
+      });
+      if (closest >= 0) placeOrRemove(closest);
+    });
+    document.querySelectorAll(".gear-choice").forEach(button => {
+      button.addEventListener("click", () => {
+        selectedSize = button.dataset.size;
+        updateHud();
+      });
+    });
+    document.getElementById("resetBtn").addEventListener("click",resetCurrent);
+    document.getElementById("hintBtn").addEventListener("click",useHint);
+    pauseBtn.addEventListener("click",togglePause);
+    mainAction.addEventListener("click", () => {
+      if (state.level === TOTAL_LEVELS - 1 && state.completed) loadLevel(0,true);
+      else if (state.completed) loadLevel(state.level+1,false);
+      else loadLevel(state.level,true);
+    });
+    submitBtn.addEventListener("click",submitScore);
+    document.getElementById("leaderboardBtn").addEventListener("click", () => {
+      resumeAfterBoard = state.running && !state.paused;
+      if (resumeAfterBoard) state.paused = true;
+      leaderboardOverlay.hidden = false;
+      updateHud();
+      loadLeaderboard();
+    });
+    document.getElementById("closeLeaderboard").addEventListener("click", () => {
+      leaderboardOverlay.hidden = true;
+      if (resumeAfterBoard) {
+        state.paused = false;
+        last = performance.now();
+      }
+      resumeAfterBoard = false;
+      updateHud();
+    });
+    document.addEventListener("visibilitychange", () => {
+      if (document.hidden && state.running && !state.paused) togglePause();
+    });
+    window.addEventListener("resize",resize);
+
+    resize();
+    buildLevel(0);
+    renderLevels();
+    updateHud();
+    requestAnimationFrame(loop);
+  })();
+  </script>
+</body>
+</html>
+
