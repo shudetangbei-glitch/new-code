@@ -58,6 +58,7 @@
     let messages=JSON.parse(localStorage.getItem("luma_github_messages")||"null")||[starter];
     let memories=JSON.parse(localStorage.getItem("luma_github_memories")||"[]");
     let token=localStorage.getItem("luma_access_token")||"";
+    let refreshToken=localStorage.getItem("luma_refresh_token")||"";
     let busy=false,voiceActive=false,speaking=false,recognition=null,signup=false;
 
     function save(){localStorage.setItem("luma_github_messages",JSON.stringify(messages));localStorage.setItem("luma_github_memories",JSON.stringify(memories))}
@@ -65,19 +66,24 @@
     function render(){el("messages").innerHTML=messages.map(m=>`<div class="row ${m.role}">${m.role==="assistant"?'<div class="mark mini">L</div>':""}<div class="bubble">${escapeHtml(m.content)}</div></div>`).join("");el("messages").scrollTop=el("messages").scrollHeight;el("send").disabled=busy||!el("input").value.trim()}
     function setStatus(text,error=false){el("status").textContent=text;el("status").classList.toggle("error",error);el("headerStatus").textContent=text}
     function add(role,content){const m={id:crypto.randomUUID(),role,content};messages.push(m);save();render();return m}
+    function storeSession(data){token=data.access_token||"";refreshToken=data.refresh_token||refreshToken;if(token)localStorage.setItem("luma_access_token",token);if(refreshToken)localStorage.setItem("luma_refresh_token",refreshToken)}
+    function clearSession(){token="";refreshToken="";localStorage.removeItem("luma_access_token");localStorage.removeItem("luma_refresh_token");el("accountButton").innerHTML="体验用户<br><small>登录后可使用自己的账号</small>"}
+    async function refreshSession(){if(!refreshToken)return false;try{const r=await fetch(SUPABASE_URL+"/auth/v1/token?grant_type=refresh_token",{method:"POST",headers:{apikey:SUPABASE_KEY,"content-type":"application/json"},body:JSON.stringify({refresh_token:refreshToken})});if(!r.ok)return false;storeSession(await r.json());return true}catch{return false}}
+    async function requestChat(payload){const options={method:"POST",headers:{"content-type":"application/json",apikey:SUPABASE_KEY,authorization:`Bearer ${token}`},body:JSON.stringify(payload)};let response=await fetch(CHAT_ENDPOINT,options);if(response.status===401&&await refreshSession()){options.headers.authorization=`Bearer ${token}`;response=await fetch(CHAT_ENDPOINT,options)}return response}
 
     async function send(text=el("input").value,fromVoice=false){
       text=text.trim();if(!text||busy)return;
       if(!token){setStatus("请先登录后使用 AI",true);el("loginModal").classList.add("open");return}
       busy=true;el("input").value="";add("user",text);const reply=add("assistant","");reply.content="正在思考…";render();setStatus("Luma 正在回答");
       try{
-        const response=await fetch(CHAT_ENDPOINT,{method:"POST",headers:{"content-type":"application/json",apikey:SUPABASE_KEY,authorization:`Bearer ${token}`},body:JSON.stringify({message:text,history:messages.slice(-12).filter(m=>m.content!=="正在思考…"),memories})});
+        const response=await requestChat({message:text,history:messages.slice(-12).filter(m=>m.content!=="正在思考…"),memories});
+        if(response.status===401){clearSession();el("loginModal").classList.add("open");throw new Error("登录已过期，请重新登录")}
         if(!response.ok){const data=await response.json().catch(()=>({}));throw new Error(data.error||"服务暂时无法连接")}
         const reader=response.body.getReader(),decoder=new TextDecoder();let full="";
         while(true){const {done,value}=await reader.read();if(done)break;full+=decoder.decode(value,{stream:true});reply.content=full;render()}
         const memory=response.headers.get("x-luma-memory");if(memory){memories.unshift(decodeURIComponent(memory));memories=memories.slice(0,30)}
         save();if(fromVoice||voiceActive)speak(full);else setStatus("点击麦克风后，说完会自动发送");
-      }catch(error){reply.content="暂时连接不到回答服务，请稍后重试。";setStatus(error.message||"连接失败",true);save();render();if(voiceActive)speak(reply.content)}finally{busy=false;render()}
+      }catch(error){reply.content=error.message||"暂时连接不到回答服务，请稍后重试。";setStatus(reply.content,true);save();render();if(voiceActive)speak(reply.content)}finally{busy=false;render()}
     }
 
     function SpeechCtor(){return window.SpeechRecognition||window.webkitSpeechRecognition}
@@ -99,8 +105,9 @@
     el("newChat").onclick=()=>{messages=[starter];save();render()};
     el("accountButton").onclick=()=>{el("loginModal").classList.add("open")};el("closeLogin").onclick=()=>el("loginModal").classList.remove("open");
     el("switchMode").onclick=()=>{signup=!signup;el("loginTitle").textContent=signup?"创建账号":"登录 Luma";el("loginSubmit").textContent=signup?"注册并登录":"登录";el("switchMode").textContent=signup?"已有账号？返回登录":"没有账号？立即注册";el("loginError").textContent=""};
-    el("loginForm").onsubmit=async e=>{e.preventDefault();el("loginError").textContent="";const endpoint=signup?SUPABASE_URL+"/auth/v1/signup":SUPABASE_URL+"/auth/v1/token?grant_type=password";try{const r=await fetch(endpoint,{method:"POST",headers:{apikey:SUPABASE_KEY,"content-type":"application/json"},body:JSON.stringify({email:el("email").value.trim(),password:el("password").value})});const data=await r.json();if(!r.ok||!data.access_token)throw new Error(data.msg||data.error_description||"登录失败");token=data.access_token;localStorage.setItem("luma_access_token",token);el("accountButton").innerHTML=`${escapeHtml(el("email").value.trim().split("@")[0])}<br><small>已登录</small>`;el("loginModal").classList.remove("open")}catch(error){el("loginError").textContent=error.message}};
+    el("loginForm").onsubmit=async e=>{e.preventDefault();el("loginError").textContent="";const endpoint=signup?SUPABASE_URL+"/auth/v1/signup":SUPABASE_URL+"/auth/v1/token?grant_type=password";try{const r=await fetch(endpoint,{method:"POST",headers:{apikey:SUPABASE_KEY,"content-type":"application/json"},body:JSON.stringify({email:el("email").value.trim(),password:el("password").value})});const data=await r.json();if(!r.ok||!data.access_token)throw new Error(data.msg||data.error_description||"登录失败");storeSession(data);el("accountButton").innerHTML=`${escapeHtml(el("email").value.trim().split("@")[0])}<br><small>已登录</small>`;el("loginModal").classList.remove("open")}catch(error){el("loginError").textContent=error.message}};
     if(token)el("accountButton").innerHTML="已登录<br><small>账号记忆将在后续同步</small>";render();
   </script>
 </body>
 </html>
+
