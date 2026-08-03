@@ -14,7 +14,7 @@
     <aside class="side">
       <div class="brand"><div class="mark">L</div><span>Luma</span></div>
       <button class="new" id="newChat">＋ 新对话</button>
-      <div class="side-note">网页现已直接运行在 GitHub Pages。对话和记忆会先保存在当前设备。</div>
+      <div class="side-note">网页现已直接运行在 GitHub Pages。语音对话在当前浏览器完成，聊天记录和记忆会保存在当前设备。</div>
       <button class="account" id="accountButton">体验用户<br><small>登录后可使用自己的账号</small></button>
     </aside>
     <section class="chat">
@@ -53,7 +53,7 @@
     const CHAT_ENDPOINT="https://jgfixbzsnblfcomjmxuc.supabase.co/functions/v1/luma-chat";
     const SUPABASE_URL="https://jgfixbzsnblfcomjmxuc.supabase.co";
     const SUPABASE_KEY="sb_publishable_trShHiFmgx3kTz_1kZPKqQ_qzMbAQnl";
-    const starter={id:"hello",role:"assistant",content:"嗨，我是 Luma。你可以直接打字聊天；语音服务接好后，说完我就会自动回答。"};
+    const starter={id:"hello",role:"assistant",content:"嗨，我是 Luma。打开语音模式后，你说完我会自动回答，并按句子朗读。"};
     const el=id=>document.getElementById(id);
     let messages=JSON.parse(localStorage.getItem("luma_github_messages")||"null")||[starter];
     let memories=JSON.parse(localStorage.getItem("luma_github_memories")||"[]");
