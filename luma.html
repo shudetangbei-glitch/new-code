@@ -82,7 +82,7 @@
         const reader=response.body.getReader(),decoder=new TextDecoder();let full="";
         while(true){const {done,value}=await reader.read();if(done)break;full+=decoder.decode(value,{stream:true});reply.content=full;render()}
         const memory=response.headers.get("x-luma-memory");if(memory){memories.unshift(decodeURIComponent(memory));memories=memories.slice(0,30)}
-        save();if(fromVoice||voiceActive)speak(full);else setStatus("点击麦克风后，说完会自动发送");
+        save();speak(full);
       }catch(error){reply.content=error.message||"暂时连接不到回答服务，请稍后重试。";setStatus(reply.content,true);save();render();if(voiceActive)speak(reply.content)}finally{busy=false;render()}
     }
 
@@ -98,7 +98,7 @@
       recognition.onend=()=>{el("box").classList.remove("listening");if(voiceActive&&!busy&&!speaking)setTimeout(listen,350)};
       try{recognition.start()}catch{setStatus("麦克风启动失败，请再点一次",true)}
     }
-    function speak(text){if(!voiceActive||!text)return;window.speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(text);u.lang="zh-CN";u.rate=1.03;speaking=true;setStatus("Luma 正在回答 · 点击麦克风可打断");u.onend=u.onerror=()=>{speaking=false;if(voiceActive){setStatus("正在听你说话…");setTimeout(listen,250)}};window.speechSynthesis.speak(u)}
+    function speak(text){if(!text)return;window.speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(text);u.lang="zh-CN";u.rate=1.03;speaking=true;setStatus("Luma 正在朗读回答 · 点击麦克风可打断");u.onend=u.onerror=()=>{speaking=false;if(voiceActive){setStatus("正在听你说话…");setTimeout(listen,250)}else setStatus("点击麦克风后，说完会自动发送")};window.speechSynthesis.speak(u)}
     function toggleVoice(){if(speaking){window.speechSynthesis.cancel();speaking=false;setStatus("已打断，正在听你说话…");listen();return}voiceActive=!voiceActive;el("mic").classList.toggle("live",voiceActive);if(voiceActive){setStatus("正在启动麦克风…");listen()}else{if(recognition)try{recognition.stop()}catch{};window.speechSynthesis.cancel();setStatus("点击麦克风后，说完会自动发送")}}
 
     el("composer").onsubmit=e=>{e.preventDefault();send()};el("input").oninput=render;el("input").onkeydown=e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();send()}};el("mic").onclick=toggleVoice;
