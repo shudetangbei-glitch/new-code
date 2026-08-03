@@ -60,6 +60,7 @@
     let token=localStorage.getItem("luma_access_token")||"";
     let refreshToken=localStorage.getItem("luma_refresh_token")||"";
     let busy=false,voiceActive=false,speaking=false,recognition=null,signup=false;
+    let speechQueue=[],speechGeneration=0,chineseVoice=null;
 
     function save(){localStorage.setItem("luma_github_messages",JSON.stringify(messages));localStorage.setItem("luma_github_memories",JSON.stringify(memories))}
     function escapeHtml(s){return s.replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]))}
@@ -71,19 +72,59 @@
     async function refreshSession(){if(!refreshToken)return false;try{const r=await fetch(SUPABASE_URL+"/auth/v1/token?grant_type=refresh_token",{method:"POST",headers:{apikey:SUPABASE_KEY,"content-type":"application/json"},body:JSON.stringify({refresh_token:refreshToken})});if(!r.ok)return false;storeSession(await r.json());return true}catch{return false}}
     async function requestChat(payload){const options={method:"POST",headers:{"content-type":"application/json",apikey:SUPABASE_KEY,authorization:`Bearer ${token}`},body:JSON.stringify(payload)};let response=await fetch(CHAT_ENDPOINT,options);if(response.status===401&&await refreshSession()){options.headers.authorization=`Bearer ${token}`;response=await fetch(CHAT_ENDPOINT,options)}return response}
 
+    function pickChineseVoice(){
+      const voices=window.speechSynthesis?.getVoices?.()||[];
+      chineseVoice=voices.find(v=>/^zh-CN/i.test(v.lang))||voices.find(v=>/^zh/i.test(v.lang))||voices.find(v=>/Chinese|普通话|中文/i.test(v.name))||null;
+    }
+    if(window.speechSynthesis){pickChineseVoice();window.speechSynthesis.onvoiceschanged=pickChineseVoice}
+    function splitSpeech(text,flush=false){
+      const chunks=[];let start=0;
+      for(let i=0;i<text.length;i++){
+        if(!"。！？!?；;\n".includes(text[i]))continue;
+        const chunk=text.slice(start,i+1).trim();
+        if(chunk){chunks.push(chunk);start=i+1}
+      }
+      const rest=text.slice(start);
+      if(flush&&rest.trim())chunks.push(rest.trim());
+      return {chunks,rest:flush?"":rest};
+    }
+    function pumpSpeech(generation){
+      if(generation!==speechGeneration||!voiceActive||!speechQueue.length){
+        if(!speechQueue.length&&generation===speechGeneration&&!window.speechSynthesis?.speaking){speaking=false;if(voiceActive&&!busy){setStatus("正在听你说话…");setTimeout(listen,180)}}
+        return;
+      }
+      if(window.speechSynthesis.speaking)return;
+      const text=speechQueue.shift();if(!text){pumpSpeech(generation);return}
+      const utterance=new SpeechSynthesisUtterance(text);utterance.lang="zh-CN";utterance.rate=.92;utterance.pitch=1;utterance.volume=1;if(chineseVoice)utterance.voice=chineseVoice;
+      speaking=true;setStatus("Luma 正在回答 · 点击麦克风可打断");
+      utterance.onend=()=>{if(generation===speechGeneration)pumpSpeech(generation)};
+      utterance.onerror=()=>{if(generation===speechGeneration)pumpSpeech(generation)};
+      window.speechSynthesis.speak(utterance);
+    }
+    function queueSpeech(text,flush=false){
+      if(!voiceActive||!text.trim())return "";
+      const parsed=splitSpeech(text,flush);speechQueue.push(...parsed.chunks);pumpSpeech(speechGeneration);return parsed.rest;
+    }
+    function stopSpeaking(restart=true){
+      speechGeneration++;speechQueue=[];window.speechSynthesis?.cancel();speaking=false;
+      if(restart&&voiceActive&&!busy)setTimeout(listen,120);
+    }
+
     async function send(text=el("input").value,fromVoice=false){
       text=text.trim();if(!text||busy)return;
       if(!token){setStatus("请先登录后使用 AI",true);el("loginModal").classList.add("open");return}
-      busy=true;el("input").value="";add("user",text);const reply=add("assistant","");reply.content="正在思考…";render();setStatus("Luma 正在回答");
+      const shouldSpeak=fromVoice||voiceActive;busy=true;el("input").value="";add("user",text);const reply=add("assistant","");reply.content="正在思考…";render();setStatus("Luma 正在回答");
       try{
         const response=await requestChat({message:text,history:messages.slice(-12).filter(m=>m.content!=="正在思考…"),memories});
         if(response.status===401){clearSession();el("loginModal").classList.add("open");throw new Error("登录已过期，请重新登录")}
         if(!response.ok){const data=await response.json().catch(()=>({}));throw new Error(data.error||"服务暂时无法连接")}
-        const reader=response.body.getReader(),decoder=new TextDecoder();let full="";
-        while(true){const {done,value}=await reader.read();if(done)break;full+=decoder.decode(value,{stream:true});reply.content=full;render()}
+        const reader=response.body.getReader(),decoder=new TextDecoder();let full="",speechRemainder="";
+        while(true){const {done,value}=await reader.read();if(done)break;const delta=decoder.decode(value,{stream:true});full+=delta;reply.content=full;render();if(shouldSpeak&&voiceActive){speechRemainder+=delta;const parsed=splitSpeech(speechRemainder,false);if(parsed.chunks.length){speechRemainder=parsed.rest;speechQueue.push(...parsed.chunks);pumpSpeech(speechGeneration)}}}
+        const tail=decoder.decode();if(tail){full+=tail;reply.content=full;render();if(shouldSpeak&&voiceActive)speechRemainder+=tail}
+        if(shouldSpeak&&voiceActive){queueSpeech(speechRemainder,true)}
         const memory=response.headers.get("x-luma-memory");if(memory){memories.unshift(decodeURIComponent(memory));memories=memories.slice(0,30)}
-        save();speak(full);
-      }catch(error){reply.content=error.message||"暂时连接不到回答服务，请稍后重试。";setStatus(reply.content,true);save();render();if(voiceActive)speak(reply.content)}finally{busy=false;render()}
+        save();
+      }catch(error){reply.content=error.message||"暂时连接不到回答服务，请稍后重试。";setStatus(reply.content,true);save();render();if(shouldSpeak&&voiceActive)queueSpeech(reply.content,true)}finally{busy=false;render();if(voiceActive&&!speaking&&!speechQueue.length)setTimeout(listen,180)}
     }
 
     function SpeechCtor(){return window.SpeechRecognition||window.webkitSpeechRecognition}
@@ -98,8 +139,7 @@
       recognition.onend=()=>{el("box").classList.remove("listening");if(voiceActive&&!busy&&!speaking)setTimeout(listen,350)};
       try{recognition.start()}catch{setStatus("麦克风启动失败，请再点一次",true)}
     }
-    function speak(text){if(!text)return;window.speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(text);u.lang="zh-CN";u.rate=1.03;speaking=true;setStatus("Luma 正在朗读回答 · 点击麦克风可打断");u.onend=u.onerror=()=>{speaking=false;if(voiceActive){setStatus("正在听你说话…");setTimeout(listen,250)}else setStatus("点击麦克风后，说完会自动发送")};window.speechSynthesis.speak(u)}
-    function toggleVoice(){if(speaking){window.speechSynthesis.cancel();speaking=false;voiceActive=true;el("mic").classList.add("live");setStatus("已打断，正在听你说话…");listen();return}voiceActive=!voiceActive;el("mic").classList.toggle("live",voiceActive);if(voiceActive){setStatus("正在启动麦克风…");listen()}else{if(recognition)try{recognition.stop()}catch{};window.speechSynthesis.cancel();setStatus("点击麦克风后，说完会自动发送")}}
+    function toggleVoice(){if(speaking){stopSpeaking(false);voiceActive=true;el("mic").classList.add("live");setStatus("已打断，正在听你说话…");listen();return}voiceActive=!voiceActive;el("mic").classList.toggle("live",voiceActive);if(voiceActive){pickChineseVoice();setStatus("正在启动麦克风…");listen()}else{if(recognition)try{recognition.stop()}catch{};stopSpeaking(false);setStatus("点击麦克风后，说完会自动发送")}}
 
     el("composer").onsubmit=e=>{e.preventDefault();send()};el("input").oninput=render;el("input").onkeydown=e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();send()}};el("mic").onclick=toggleVoice;
     el("newChat").onclick=()=>{messages=[starter];save();render()};
@@ -110,4 +150,3 @@
   </script>
 </body>
 </html>
-
