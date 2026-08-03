@@ -50,7 +50,7 @@
   </div>
 
   <script>
-    const API_BASE="https://luma-live-memory-chat.shudetangbei.chatgpt.site";
+    const CHAT_ENDPOINT="https://jgfixbzsnblfcomjmxuc.supabase.co/functions/v1/luma-chat";
     const SUPABASE_URL="https://jgfixbzsnblfcomjmxuc.supabase.co";
     const SUPABASE_KEY="sb_publishable_trShHiFmgx3kTz_1kZPKqQ_qzMbAQnl";
     const starter={id:"hello",role:"assistant",content:"嗨，我是 Luma。你可以直接打字聊天；语音服务接好后，说完我就会自动回答。"};
@@ -67,15 +67,17 @@
     function add(role,content){const m={id:crypto.randomUUID(),role,content};messages.push(m);save();render();return m}
 
     async function send(text=el("input").value,fromVoice=false){
-      text=text.trim();if(!text||busy)return;busy=true;el("input").value="";add("user",text);const reply=add("assistant","");reply.content="正在思考…";render();setStatus("Luma 正在回答");
+      text=text.trim();if(!text||busy)return;
+      if(!token){setStatus("请先登录后使用 AI",true);el("loginModal").classList.add("open");return}
+      busy=true;el("input").value="";add("user",text);const reply=add("assistant","");reply.content="正在思考…";render();setStatus("Luma 正在回答");
       try{
-        const response=await fetch(API_BASE+"/api/chat",{method:"POST",headers:{"content-type":"application/json",...(token?{authorization:`Bearer ${token}`}:{"x-luma-guest":"1"})},body:JSON.stringify({message:text,history:messages.slice(-12).filter(m=>m.content!=="正在思考…"),memories})});
+        const response=await fetch(CHAT_ENDPOINT,{method:"POST",headers:{"content-type":"application/json",apikey:SUPABASE_KEY,authorization:`Bearer ${token}`},body:JSON.stringify({message:text,history:messages.slice(-12).filter(m=>m.content!=="正在思考…"),memories})});
         if(!response.ok){const data=await response.json().catch(()=>({}));throw new Error(data.error||"服务暂时无法连接")}
         const reader=response.body.getReader(),decoder=new TextDecoder();let full="";
         while(true){const {done,value}=await reader.read();if(done)break;full+=decoder.decode(value,{stream:true});reply.content=full;render()}
         const memory=response.headers.get("x-luma-memory");if(memory){memories.unshift(decodeURIComponent(memory));memories=memories.slice(0,30)}
         save();if(fromVoice||voiceActive)speak(full);else setStatus("点击麦克风后，说完会自动发送");
-      }catch(error){reply.content="暂时连接不到回答服务。GitHub 页面已正常打开，后端访问问题会在下一步迁移时解决。";setStatus(error.message||"连接失败",true);save();render();if(voiceActive)speak(reply.content)}finally{busy=false;render()}
+      }catch(error){reply.content="暂时连接不到回答服务，请稍后重试。";setStatus(error.message||"连接失败",true);save();render();if(voiceActive)speak(reply.content)}finally{busy=false;render()}
     }
 
     function SpeechCtor(){return window.SpeechRecognition||window.webkitSpeechRecognition}
@@ -102,4 +104,3 @@
   </script>
 </body>
 </html>
-
