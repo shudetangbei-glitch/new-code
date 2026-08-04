@@ -4,62 +4,64 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#507766">
-  <title>Luma 实时语音聊天</title>
+  <title>Luma 瀹炴椂璇煶鑱婂ぉ</title>
   <style>
-    :root{--ink:#262522;--muted:#8a8881;--paper:#fbfaf7;--warm:#f2eee7;--green:#507766;--line:#e8e3da;--danger:#b75b50}*{box-sizing:border-box}html,body{margin:0;height:100%;overflow:hidden}body{font-family:Inter,"PingFang SC","Microsoft YaHei",sans-serif;color:var(--ink);background:var(--paper)}button,textarea,input{font:inherit}.app{height:100%;display:flex}.side{width:270px;padding:24px 18px;background:#f3f0ea;border-right:1px solid var(--line);display:flex;flex-direction:column}.brand{display:flex;align-items:center;gap:11px;font:21px Georgia,serif;margin:0 6px 24px}.mark,.avatar{display:grid;place-items:center;background:linear-gradient(145deg,#507a68,#91ac9d);color:#fff}.mark{width:32px;height:32px;border-radius:10px}.new{height:45px;border:0;border-radius:13px;background:var(--green);color:#fff;font-weight:700}.side-note{margin-top:20px;padding:14px;border:1px solid #e2ddd4;border-radius:13px;background:#fbfaf7;color:#77736c;font-size:12px;line-height:1.65}.account{margin-top:auto;border:0;border-top:1px solid #ded9d1;padding:17px 5px 0;background:transparent;text-align:left;color:#666}.chat{min-width:0;flex:1;display:flex;flex-direction:column;background:radial-gradient(circle at 55% 45%,#fff 0,#fbfaf7 60%,#f7f3ed 100%)}header{height:72px;flex:none;padding:0 max(22px,calc((100% - 760px)/2));display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #eeeae3}.person{display:flex;align-items:center;gap:11px}.avatar{width:40px;height:40px;border-radius:14px;font:18px Georgia,serif;position:relative}.avatar:after{content:"";position:absolute;width:9px;height:9px;border-radius:50%;background:#61aa77;border:2px solid #fff;right:-2px;bottom:-2px}.person b{display:block;font:16px Georgia,serif}.person small{color:var(--muted);font-size:11px}.badge{border:1px solid #d8e4dd;border-radius:999px;padding:6px 10px;color:var(--green);font-size:11px;background:#f4f8f5}.messages{flex:1;overflow:auto;padding:28px max(22px,calc((100% - 760px)/2)) 40px}.row{display:flex;gap:10px;margin:0 0 20px;align-items:flex-end}.row.user{justify-content:flex-end}.bubble{max-width:min(78%,570px);padding:13px 17px;border-radius:5px 17px 17px 17px;background:#eeeae3;font-size:14px;line-height:1.7;white-space:pre-wrap}.user .bubble{border-radius:17px 5px 17px 17px;background:#527866;color:#fff}.mini{width:30px;height:30px;border-radius:10px;font-size:12px;flex:none}.typing:after{content:"···";letter-spacing:4px;animation:blink .8s infinite}.composer{flex:none;padding:10px max(22px,calc((100% - 760px)/2)) 18px}.box{display:flex;align-items:center;gap:6px;padding:7px 8px 7px 16px;background:#fff;border:1px solid #ddd8cf;border-radius:19px;box-shadow:0 9px 30px #776f6414}.box.listening{border-color:#d66f5d;box-shadow:0 0 0 5px #d66f5d18}.box textarea{flex:1;border:0;outline:0;resize:none;background:transparent;line-height:28px;max-height:84px}.icon{width:42px;height:42px;border:0;border-radius:13px;background:transparent;font-size:19px}.mic.live{background:#d96958;color:#fff;animation:pulse 1.3s infinite}.send{background:var(--green);color:#fff}.send:disabled{background:#ddd9d1;color:#999}.status{text-align:center;min-height:18px;margin:7px 0 0;color:#8f8b84;font-size:10px}.status.error{color:var(--danger)}.modal{position:fixed;inset:0;background:#312f2b66;display:none;place-items:center;padding:20px}.modal.open{display:grid}.card{width:min(410px,100%);padding:30px;background:#fff;border-radius:24px;box-shadow:0 24px 70px #29251f3d;text-align:center}.card h2{font:24px Georgia,serif;margin:0 0 8px}.card p{font-size:12px;color:#858078;line-height:1.65}.card input{width:100%;height:48px;margin:5px 0;border:1px solid #ddd7ce;border-radius:12px;padding:0 14px;outline:0}.primary{width:100%;height:48px;border:0;border-radius:12px;background:var(--green);color:#fff;font-weight:700;margin-top:8px}.link{border:0;background:transparent;color:var(--green);margin-top:12px;font-size:12px}.close{float:right;border:0;background:none;font-size:22px}.login-error{color:var(--danger)!important}.hide{display:none!important}@keyframes pulse{50%{transform:scale(1.06);box-shadow:0 0 0 8px #d9695813}}@keyframes blink{50%{opacity:.25}}@media(max-width:720px){.side{display:none}header{padding:0 16px}.badge{font-size:10px}.messages,.composer{padding-left:14px;padding-right:14px}.bubble{max-width:87%}.person small{max-width:190px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}}
+    :root{--ink:#262522;--muted:#8a8881;--paper:#fbfaf7;--warm:#f2eee7;--green:#507766;--line:#e8e3da;--danger:#b75b50}*{box-sizing:border-box}html,body{margin:0;height:100%;overflow:hidden}body{font-family:Inter,"PingFang SC","Microsoft YaHei",sans-serif;color:var(--ink);background:var(--paper)}button,textarea,input{font:inherit}.app{height:100%;display:flex}.side{width:270px;padding:24px 18px;background:#f3f0ea;border-right:1px solid var(--line);display:flex;flex-direction:column}.brand{display:flex;align-items:center;gap:11px;font:21px Georgia,serif;margin:0 6px 24px}.mark,.avatar{display:grid;place-items:center;background:linear-gradient(145deg,#507a68,#91ac9d);color:#fff}.mark{width:32px;height:32px;border-radius:10px}.new{height:45px;border:0;border-radius:13px;background:var(--green);color:#fff;font-weight:700}.side-note{margin-top:20px;padding:14px;border:1px solid #e2ddd4;border-radius:13px;background:#fbfaf7;color:#77736c;font-size:12px;line-height:1.65}.account{margin-top:auto;border:0;border-top:1px solid #ded9d1;padding:17px 5px 0;background:transparent;text-align:left;color:#666}.chat{min-width:0;flex:1;display:flex;flex-direction:column;background:radial-gradient(circle at 55% 45%,#fff 0,#fbfaf7 60%,#f7f3ed 100%)}header{height:72px;flex:none;padding:0 max(22px,calc((100% - 760px)/2));display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid #eeeae3}.person{display:flex;align-items:center;gap:11px}.avatar{width:40px;height:40px;border-radius:14px;font:18px Georgia,serif;position:relative}.avatar:after{content:"";position:absolute;width:9px;height:9px;border-radius:50%;background:#61aa77;border:2px solid #fff;right:-2px;bottom:-2px}.person b{display:block;font:16px Georgia,serif}.person small{color:var(--muted);font-size:11px}.badge{border:1px solid #d8e4dd;border-radius:999px;padding:6px 10px;color:var(--green);font-size:11px;background:#f4f8f5}.messages{flex:1;overflow:auto;padding:28px max(22px,calc((100% - 760px)/2)) 40px}.row{display:flex;gap:10px;margin:0 0 20px;align-items:flex-end}.row.user{justify-content:flex-end}.bubble{max-width:min(78%,570px);padding:13px 17px;border-radius:5px 17px 17px 17px;background:#eeeae3;font-size:14px;line-height:1.7;white-space:pre-wrap}.user .bubble{border-radius:17px 5px 17px 17px;background:#527866;color:#fff}.mini{width:30px;height:30px;border-radius:10px;font-size:12px;flex:none}.typing:after{content:"路路路";letter-spacing:4px;animation:blink .8s infinite}.composer{flex:none;padding:10px max(22px,calc((100% - 760px)/2)) 18px}.box{display:flex;align-items:center;gap:6px;padding:7px 8px 7px 16px;background:#fff;border:1px solid #ddd8cf;border-radius:19px;box-shadow:0 9px 30px #776f6414}.box.listening{border-color:#d66f5d;box-shadow:0 0 0 5px #d66f5d18}.box textarea{flex:1;border:0;outline:0;resize:none;background:transparent;line-height:28px;max-height:84px}.icon{width:42px;height:42px;border:0;border-radius:13px;background:transparent;font-size:19px}.mic.live{background:#d96958;color:#fff;animation:pulse 1.3s infinite}.send{background:var(--green);color:#fff}.send:disabled{background:#ddd9d1;color:#999}.status{text-align:center;min-height:18px;margin:7px 0 0;color:#8f8b84;font-size:10px}.status.error{color:var(--danger)}.modal{position:fixed;inset:0;background:#312f2b66;display:none;place-items:center;padding:20px}.modal.open{display:grid}.card{width:min(410px,100%);padding:30px;background:#fff;border-radius:24px;box-shadow:0 24px 70px #29251f3d;text-align:center}.card h2{font:24px Georgia,serif;margin:0 0 8px}.card p{font-size:12px;color:#858078;line-height:1.65}.card input{width:100%;height:48px;margin:5px 0;border:1px solid #ddd7ce;border-radius:12px;padding:0 14px;outline:0}.primary{width:100%;height:48px;border:0;border-radius:12px;background:var(--green);color:#fff;font-weight:700;margin-top:8px}.link{border:0;background:transparent;color:var(--green);margin-top:12px;font-size:12px}.close{float:right;border:0;background:none;font-size:22px}.login-error{color:var(--danger)!important}.hide{display:none!important}@keyframes pulse{50%{transform:scale(1.06);box-shadow:0 0 0 8px #d9695813}}@keyframes blink{50%{opacity:.25}}@media(max-width:720px){.side{display:none}header{padding:0 16px}.badge{font-size:10px}.messages,.composer{padding-left:14px;padding-right:14px}.bubble{max-width:87%}.person small{max-width:190px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}}
   </style>
 </head>
 <body>
   <main class="app">
     <aside class="side">
       <div class="brand"><div class="mark">L</div><span>Luma</span></div>
-      <button class="new" id="newChat">＋ 新对话</button>
-      <div class="side-note">网页现已直接运行在 GitHub Pages。语音对话在当前浏览器完成，聊天记录和记忆会保存在当前设备。</div>
-      <button class="account" id="accountButton">体验用户<br><small>登录后可使用自己的账号</small></button>
+      <button class="new" id="newChat">锛?鏂板璇?/button>
+      <div class="side-note">缃戦〉鐜板凡鐩存帴杩愯鍦?GitHub Pages銆傝闊冲璇濆湪褰撳墠娴忚鍣ㄥ畬鎴愶紝鑱婂ぉ璁板綍鍜岃蹇嗕細淇濆瓨鍦ㄥ綋鍓嶈澶囥€?/div>
+      <button class="account" id="accountButton">浣撻獙鐢ㄦ埛<br><small>鐧诲綍鍚庡彲浣跨敤鑷繁鐨勮处鍙?/small></button>
     </aside>
     <section class="chat">
       <header>
-        <div class="person"><div class="avatar">L</div><div><b>Luma</b><small id="headerStatus">在线 · 正在等你说话</small></div></div>
+        <div class="person"><div class="avatar">L</div><div><b>Luma</b><small id="headerStatus">鍦ㄧ嚎 路 姝ｅ湪绛変綘璇磋瘽</small></div></div>
         <span class="badge">DeepSeek</span>
       </header>
       <div class="messages" id="messages"></div>
       <form class="composer" id="composer">
         <div class="box" id="box">
-          <textarea id="input" rows="1" placeholder="说点什么吧……" aria-label="消息"></textarea>
-          <button type="button" class="icon mic" id="mic" aria-label="开始语音">🎙</button>
-          <button class="icon send" id="send" aria-label="发送">↑</button>
+          <textarea id="input" rows="1" placeholder="璇寸偣浠€涔堝惂鈥︹€? aria-label="娑堟伅"></textarea>
+          <button type="button" class="icon mic" id="mic" aria-label="寮€濮嬭闊?>馃帣</button>
+          <button class="icon send" id="send" aria-label="鍙戦€?>鈫?/button>
         </div>
-        <p class="status" id="status">点击麦克风后，说完会自动发送</p>
+        <p class="status" id="status">鐐瑰嚮楹﹀厠椋庡悗锛岃瀹屼細鑷姩鍙戦€?/p>
       </form>
     </section>
   </main>
 
   <div class="modal" id="loginModal">
     <section class="card">
-      <button class="close" id="closeLogin">×</button>
-      <h2 id="loginTitle">登录 Luma</h2>
-      <p>使用邮箱和密码，不发送验证链接。</p>
+      <button class="close" id="closeLogin">脳</button>
+      <h2 id="loginTitle">鐧诲綍 Luma</h2>
+      <p>浣跨敤閭鍜屽瘑鐮侊紝涓嶅彂閫侀獙璇侀摼鎺ャ€?/p>
       <form id="loginForm">
-        <input id="email" type="email" required placeholder="邮箱地址" autocomplete="email">
-        <input id="password" type="password" required minlength="8" placeholder="密码（至少 8 位）" autocomplete="current-password">
-        <button class="primary" id="loginSubmit">登录</button>
+        <input id="email" type="email" required placeholder="閭鍦板潃" autocomplete="email">
+        <input id="password" type="password" required minlength="8" placeholder="瀵嗙爜锛堣嚦灏?8 浣嶏級" autocomplete="current-password">
+        <button class="primary" id="loginSubmit">鐧诲綍</button>
       </form>
       <p class="login-error" id="loginError"></p>
-      <button class="link" id="switchMode">没有账号？立即注册</button>
+      <button class="link" id="switchMode">娌℃湁璐﹀彿锛熺珛鍗虫敞鍐?/button>
     </section>
   </div>
 
   <script>
     const CHAT_ENDPOINT="https://jgfixbzsnblfcomjmxuc.supabase.co/functions/v1/luma-chat";
+    // Replace with the HTTPS URL of the user-owned sherpa-onnx voice server.
+    const ASR_ENDPOINT="https://luma-live-memory-chat.shudetangbei.chatgpt.site/api/asr";
     const SUPABASE_URL="https://jgfixbzsnblfcomjmxuc.supabase.co";
     const SUPABASE_KEY="sb_publishable_trShHiFmgx3kTz_1kZPKqQ_qzMbAQnl";
-    const starter={id:"hello",role:"assistant",content:"嗨，我是 Luma。打开语音模式后，你说完我会自动回答，并按句子朗读。"};
+    const starter={id:"hello",role:"assistant",content:"鍡紝鎴戞槸 Luma銆傛墦寮€璇煶妯″紡鍚庯紝浣犺瀹屾垜浼氳嚜鍔ㄥ洖绛旓紝骞舵寜鍙ュ瓙鏈楄銆?};
     const el=id=>document.getElementById(id);
     let messages=JSON.parse(localStorage.getItem("luma_github_messages")||"null")||[starter];
     let memories=JSON.parse(localStorage.getItem("luma_github_memories")||"[]");
     let token=localStorage.getItem("luma_access_token")||"";
     let refreshToken=localStorage.getItem("luma_refresh_token")||"";
-    let busy=false,voiceActive=false,speaking=false,recognition=null,signup=false;
+    let busy=false,voiceActive=false,speaking=false,recognition=null,signup=false,recorder=null,mediaStream=null,audioContext=null,silenceFrame=null,recordingChunks=[],heardSpeech=false,silenceSince=0;
     let speechQueue=[],speechGeneration=0,chineseVoice=null;
 
     function save(){localStorage.setItem("luma_github_messages",JSON.stringify(messages));localStorage.setItem("luma_github_memories",JSON.stringify(memories))}
@@ -68,19 +70,19 @@
     function setStatus(text,error=false){el("status").textContent=text;el("status").classList.toggle("error",error);el("headerStatus").textContent=text}
     function add(role,content){const m={id:crypto.randomUUID(),role,content};messages.push(m);save();render();return m}
     function storeSession(data){token=data.access_token||"";refreshToken=data.refresh_token||refreshToken;if(token)localStorage.setItem("luma_access_token",token);if(refreshToken)localStorage.setItem("luma_refresh_token",refreshToken)}
-    function clearSession(){token="";refreshToken="";localStorage.removeItem("luma_access_token");localStorage.removeItem("luma_refresh_token");el("accountButton").innerHTML="体验用户<br><small>登录后可使用自己的账号</small>"}
+    function clearSession(){token="";refreshToken="";localStorage.removeItem("luma_access_token");localStorage.removeItem("luma_refresh_token");el("accountButton").innerHTML="浣撻獙鐢ㄦ埛<br><small>鐧诲綍鍚庡彲浣跨敤鑷繁鐨勮处鍙?/small>"}
     async function refreshSession(){if(!refreshToken)return false;try{const r=await fetch(SUPABASE_URL+"/auth/v1/token?grant_type=refresh_token",{method:"POST",headers:{apikey:SUPABASE_KEY,"content-type":"application/json"},body:JSON.stringify({refresh_token:refreshToken})});if(!r.ok)return false;storeSession(await r.json());return true}catch{return false}}
     async function requestChat(payload){const options={method:"POST",headers:{"content-type":"application/json",apikey:SUPABASE_KEY,authorization:`Bearer ${token}`},body:JSON.stringify(payload)};let response=await fetch(CHAT_ENDPOINT,options);if(response.status===401&&await refreshSession()){options.headers.authorization=`Bearer ${token}`;response=await fetch(CHAT_ENDPOINT,options)}return response}
 
     function pickChineseVoice(){
       const voices=window.speechSynthesis?.getVoices?.()||[];
-      chineseVoice=voices.find(v=>/^zh-CN/i.test(v.lang))||voices.find(v=>/^zh/i.test(v.lang))||voices.find(v=>/Chinese|普通话|中文/i.test(v.name))||null;
+      chineseVoice=voices.find(v=>/^zh-CN/i.test(v.lang))||voices.find(v=>/^zh/i.test(v.lang))||voices.find(v=>/Chinese|鏅€氳瘽|涓枃/i.test(v.name))||null;
     }
     if(window.speechSynthesis){pickChineseVoice();window.speechSynthesis.onvoiceschanged=pickChineseVoice}
     function splitSpeech(text,flush=false){
       const chunks=[];let start=0;
       for(let i=0;i<text.length;i++){
-        if(!"。！？!?；;\n".includes(text[i]))continue;
+        if(!"銆傦紒锛??锛?\n".includes(text[i]))continue;
         const chunk=text.slice(start,i+1).trim();
         if(chunk){chunks.push(chunk);start=i+1}
       }
@@ -90,13 +92,13 @@
     }
     function pumpSpeech(generation){
       if(generation!==speechGeneration||!voiceActive||!speechQueue.length){
-        if(!speechQueue.length&&generation===speechGeneration&&!window.speechSynthesis?.speaking){speaking=false;if(voiceActive&&!busy){setStatus("正在听你说话…");setTimeout(listen,180)}}
+        if(!speechQueue.length&&generation===speechGeneration&&!window.speechSynthesis?.speaking){speaking=false;if(voiceActive&&!busy){setStatus("姝ｅ湪鍚綘璇磋瘽鈥?);setTimeout(listen,180)}}
         return;
       }
       if(window.speechSynthesis.speaking)return;
       const text=speechQueue.shift();if(!text){pumpSpeech(generation);return}
       const utterance=new SpeechSynthesisUtterance(text);utterance.lang="zh-CN";utterance.rate=.92;utterance.pitch=1;utterance.volume=1;if(chineseVoice)utterance.voice=chineseVoice;
-      speaking=true;setStatus("Luma 正在回答 · 点击麦克风可打断");
+      speaking=true;setStatus("Luma 姝ｅ湪鍥炵瓟 路 鐐瑰嚮楹﹀厠椋庡彲鎵撴柇");
       utterance.onend=()=>{if(generation===speechGeneration)pumpSpeech(generation)};
       utterance.onerror=()=>{if(generation===speechGeneration)pumpSpeech(generation)};
       window.speechSynthesis.speak(utterance);
@@ -112,41 +114,64 @@
 
     async function send(text=el("input").value,fromVoice=false){
       text=text.trim();if(!text||busy)return;
-      if(!token){setStatus("请先登录后使用 AI",true);el("loginModal").classList.add("open");return}
-      const shouldSpeak=fromVoice||voiceActive;busy=true;el("input").value="";add("user",text);const reply=add("assistant","");reply.content="正在思考…";render();setStatus("Luma 正在回答");
+      if(!token){setStatus("璇峰厛鐧诲綍鍚庝娇鐢?AI",true);el("loginModal").classList.add("open");return}
+      const shouldSpeak=fromVoice||voiceActive;busy=true;el("input").value="";add("user",text);const reply=add("assistant","");reply.content="姝ｅ湪鎬濊€冣€?;render();setStatus("Luma 姝ｅ湪鍥炵瓟");
       try{
-        const response=await requestChat({message:text,history:messages.slice(-12).filter(m=>m.content!=="正在思考…"),memories});
-        if(response.status===401){clearSession();el("loginModal").classList.add("open");throw new Error("登录已过期，请重新登录")}
-        if(!response.ok){const data=await response.json().catch(()=>({}));throw new Error(data.error||"服务暂时无法连接")}
+        const response=await requestChat({message:text,history:messages.slice(-12).filter(m=>m.content!=="姝ｅ湪鎬濊€冣€?),memories});
+        if(response.status===401){clearSession();el("loginModal").classList.add("open");throw new Error("鐧诲綍宸茶繃鏈燂紝璇烽噸鏂扮櫥褰?)}
+        if(!response.ok){const data=await response.json().catch(()=>({}));throw new Error(data.error||"鏈嶅姟鏆傛椂鏃犳硶杩炴帴")}
         const reader=response.body.getReader(),decoder=new TextDecoder();let full="",speechRemainder="";
         while(true){const {done,value}=await reader.read();if(done)break;const delta=decoder.decode(value,{stream:true});full+=delta;reply.content=full;render();if(shouldSpeak&&voiceActive){speechRemainder+=delta;const parsed=splitSpeech(speechRemainder,false);if(parsed.chunks.length){speechRemainder=parsed.rest;speechQueue.push(...parsed.chunks);pumpSpeech(speechGeneration)}}}
         const tail=decoder.decode();if(tail){full+=tail;reply.content=full;render();if(shouldSpeak&&voiceActive)speechRemainder+=tail}
         if(shouldSpeak&&voiceActive){queueSpeech(speechRemainder,true)}
         const memory=response.headers.get("x-luma-memory");if(memory){memories.unshift(decodeURIComponent(memory));memories=memories.slice(0,30)}
         save();
-      }catch(error){reply.content=error.message||"暂时连接不到回答服务，请稍后重试。";setStatus(reply.content,true);save();render();if(shouldSpeak&&voiceActive)queueSpeech(reply.content,true)}finally{busy=false;render();if(voiceActive&&!speaking&&!speechQueue.length)setTimeout(listen,180)}
+      }catch(error){reply.content=error.message||"鏆傛椂杩炴帴涓嶅埌鍥炵瓟鏈嶅姟锛岃绋嶅悗閲嶈瘯銆?;setStatus(reply.content,true);save();render();if(shouldSpeak&&voiceActive)queueSpeech(reply.content,true)}finally{busy=false;render();if(voiceActive&&!speaking&&!speechQueue.length)setTimeout(listen,180)}
     }
 
+    async function recordVoice(){
+      if(!voiceActive||busy||speaking||recorder)return;
+      if(!ASR_ENDPOINT){setStatus("璇煶璇嗗埆鏈嶅姟灏氭湭閮ㄧ讲锛岃鍏堥厤缃?ASR 鏈嶅姟鍦板潃",true);return}
+      if(!navigator.mediaDevices?.getUserMedia||typeof MediaRecorder==="undefined"){setStatus("褰撳墠娴忚鍣ㄤ笉鏀寔褰曢煶锛岃鏇存崲鏈€鏂扮増 Chrome 鎴?Edge",true);return}
+      try{
+        mediaStream=await navigator.mediaDevices.getUserMedia({audio:true});
+        const mime=["audio/webm;codecs=opus","audio/webm","audio/ogg;codecs=opus"].find(type=>MediaRecorder.isTypeSupported(type))||"";
+        recorder=new MediaRecorder(mediaStream,mime?{mimeType:mime}:undefined);recordingChunks=[];heardSpeech=false;silenceSince=0;
+        recorder.ondataavailable=e=>{if(e.data.size)recordingChunks.push(e.data)};
+        recorder.onstop=async()=>{
+          const chunks=recordingChunks;recordingChunks=[];const current=recorder;recorder=null;
+          mediaStream?.getTracks().forEach(track=>track.stop());mediaStream=null;
+          if(silenceFrame)cancelAnimationFrame(silenceFrame);silenceFrame=null;
+          await audioContext?.close?.();audioContext=null;el("box").classList.remove("listening");
+          if(!chunks.length||!voiceActive)return;setStatus("姝ｅ湪璇嗗埆浣犵殑璇濃€?);
+          try{const body=new FormData();body.append("audio",new Blob(chunks,{type:current.mimeType||"audio/webm"}),"voice.webm");const configuredEndpoint=ASR_ENDPOINT.replace(/\/$/,"");const response=await fetch(configuredEndpoint.endsWith("/asr")?configuredEndpoint:configuredEndpoint+"/asr",{method:"POST",body});const data=await response.json().catch(()=>({}));if(!response.ok)throw new Error(data.detail||"璇煶璇嗗埆鏈嶅姟鏆傛椂涓嶅彲鐢?);const text=(data.text||"").trim();if(!text){setStatus("娌℃湁鍚竻锛岃鍐嶈涓€娆?,true);if(voiceActive)setTimeout(listen,350);return}el("input").value=text;render();setStatus("宸茶瘑鍒紝Luma 姝ｅ湪鍥炵瓟鈥?);send(text,true)}catch(error){setStatus(error.message||"璇煶璇嗗埆澶辫触锛岃绋嶅悗閲嶈瘯",true)}
+        };
+        recorder.start();el("box").classList.add("listening");setStatus("姝ｅ湪鍚綘璇磋瘽鈥﹁瀹屽仠椤夸竴涓嬩細鑷姩鍙戦€?);
+        audioContext=new AudioContext();const analyser=audioContext.createAnalyser();analyser.fftSize=1024;audioContext.createMediaStreamSource(mediaStream).connect(analyser);const samples=new Uint8Array(analyser.fftSize),started=Date.now();
+        const watch=()=>{if(!recorder)return;analyser.getByteTimeDomainData(samples);let sum=0;for(const sample of samples){const n=(sample-128)/128;sum+=n*n}const rms=Math.sqrt(sum/samples.length),now=Date.now();if(rms>.018){heardSpeech=true;silenceSince=0}else if(heardSpeech){if(!silenceSince)silenceSince=now;if(now-silenceSince>850||now-started>12000){recorder.stop();return}}else if(now-started>12000){recorder.stop();return}silenceFrame=requestAnimationFrame(watch)};silenceFrame=requestAnimationFrame(watch);
+      }catch(error){setStatus(error.name==="NotAllowedError"?"璇峰厑璁告祻瑙堝櫒浣跨敤楹﹀厠椋?:"楹﹀厠椋庡惎鍔ㄥけ璐ワ紝璇锋鏌ヨ澶囨潈闄?,true)}
+    }
     function SpeechCtor(){return window.SpeechRecognition||window.webkitSpeechRecognition}
     function listen(){
       if(!voiceActive||busy||speaking)return;const Speech=SpeechCtor();
-      if(!Speech){voiceActive=false;el("mic").classList.remove("live");setStatus("当前浏览器无法提供语音识别；等待接入国内语音服务",true);return}
+      if(!Speech){recordVoice();return}
       if(recognition)try{recognition.stop()}catch{}
       recognition=new Speech();recognition.lang="zh-CN";recognition.continuous=false;recognition.interimResults=true;
-      recognition.onstart=()=>{el("box").classList.add("listening");setStatus("正在听你说话…")};
-      recognition.onresult=e=>{let text=Array.from(e.results).map(r=>r[0].transcript).join("");el("input").value=text;render();const last=e.results[e.results.length-1];if(last&&last.isFinal&&text.trim()){setStatus("已识别，正在自动发送");try{recognition.stop()}catch{};send(text,true)}};
-      recognition.onerror=e=>{el("box").classList.remove("listening");if(e.error==="not-allowed"){voiceActive=false;el("mic").classList.remove("live");setStatus("请允许浏览器使用麦克风",true)}else if(voiceActive&&!busy)setTimeout(listen,500)};
+      recognition.onstart=()=>{el("box").classList.add("listening");setStatus("姝ｅ湪鍚綘璇磋瘽鈥?)};
+      recognition.onresult=e=>{let text=Array.from(e.results).map(r=>r[0].transcript).join("");el("input").value=text;render();const last=e.results[e.results.length-1];if(last&&last.isFinal&&text.trim()){setStatus("宸茶瘑鍒紝姝ｅ湪鑷姩鍙戦€?);try{recognition.stop()}catch{};send(text,true)}};
+      recognition.onerror=e=>{el("box").classList.remove("listening");if(e.error==="not-allowed"){voiceActive=false;el("mic").classList.remove("live");setStatus("璇峰厑璁告祻瑙堝櫒浣跨敤楹﹀厠椋?,true)}else if(voiceActive&&!busy)setTimeout(listen,500)};
       recognition.onend=()=>{el("box").classList.remove("listening");if(voiceActive&&!busy&&!speaking)setTimeout(listen,350)};
-      try{recognition.start()}catch{setStatus("麦克风启动失败，请再点一次",true)}
+      try{recognition.start()}catch{setStatus("楹﹀厠椋庡惎鍔ㄥけ璐ワ紝璇峰啀鐐逛竴娆?,true)}
     }
-    function toggleVoice(){if(speaking){stopSpeaking(false);voiceActive=true;el("mic").classList.add("live");setStatus("已打断，正在听你说话…");listen();return}voiceActive=!voiceActive;el("mic").classList.toggle("live",voiceActive);if(voiceActive){pickChineseVoice();setStatus("正在启动麦克风…");listen()}else{if(recognition)try{recognition.stop()}catch{};stopSpeaking(false);setStatus("点击麦克风后，说完会自动发送")}}
+    function toggleVoice(){if(recorder){recorder.stop();return}if(speaking){stopSpeaking(false);voiceActive=true;el("mic").classList.add("live");setStatus("宸叉墦鏂紝姝ｅ湪鍚綘璇磋瘽鈥?);listen();return}voiceActive=!voiceActive;el("mic").classList.toggle("live",voiceActive);if(voiceActive){pickChineseVoice();setStatus("姝ｅ湪鍚姩楹﹀厠椋庘€?);listen()}else{if(recognition)try{recognition.stop()}catch{};stopSpeaking(false);setStatus("鐐瑰嚮楹﹀厠椋庡悗锛岃瀹屼細鑷姩鍙戦€?)}}
 
     el("composer").onsubmit=e=>{e.preventDefault();send()};el("input").oninput=render;el("input").onkeydown=e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();send()}};el("mic").onclick=toggleVoice;
     el("newChat").onclick=()=>{messages=[starter];save();render()};
     el("accountButton").onclick=()=>{el("loginModal").classList.add("open")};el("closeLogin").onclick=()=>el("loginModal").classList.remove("open");
-    el("switchMode").onclick=()=>{signup=!signup;el("loginTitle").textContent=signup?"创建账号":"登录 Luma";el("loginSubmit").textContent=signup?"注册并登录":"登录";el("switchMode").textContent=signup?"已有账号？返回登录":"没有账号？立即注册";el("loginError").textContent=""};
-    el("loginForm").onsubmit=async e=>{e.preventDefault();el("loginError").textContent="";const endpoint=signup?SUPABASE_URL+"/auth/v1/signup":SUPABASE_URL+"/auth/v1/token?grant_type=password";try{const r=await fetch(endpoint,{method:"POST",headers:{apikey:SUPABASE_KEY,"content-type":"application/json"},body:JSON.stringify({email:el("email").value.trim(),password:el("password").value})});const data=await r.json();if(!r.ok||!data.access_token)throw new Error(data.msg||data.error_description||"登录失败");storeSession(data);el("accountButton").innerHTML=`${escapeHtml(el("email").value.trim().split("@")[0])}<br><small>已登录</small>`;el("loginModal").classList.remove("open")}catch(error){el("loginError").textContent=error.message}};
-    if(token)el("accountButton").innerHTML="已登录<br><small>账号记忆将在后续同步</small>";render();
+    el("switchMode").onclick=()=>{signup=!signup;el("loginTitle").textContent=signup?"鍒涘缓璐﹀彿":"鐧诲綍 Luma";el("loginSubmit").textContent=signup?"娉ㄥ唽骞剁櫥褰?:"鐧诲綍";el("switchMode").textContent=signup?"宸叉湁璐﹀彿锛熻繑鍥炵櫥褰?:"娌℃湁璐﹀彿锛熺珛鍗虫敞鍐?;el("loginError").textContent=""};
+    el("loginForm").onsubmit=async e=>{e.preventDefault();el("loginError").textContent="";const endpoint=signup?SUPABASE_URL+"/auth/v1/signup":SUPABASE_URL+"/auth/v1/token?grant_type=password";try{const r=await fetch(endpoint,{method:"POST",headers:{apikey:SUPABASE_KEY,"content-type":"application/json"},body:JSON.stringify({email:el("email").value.trim(),password:el("password").value})});const data=await r.json();if(!r.ok||!data.access_token)throw new Error(data.msg||data.error_description||"鐧诲綍澶辫触");storeSession(data);el("accountButton").innerHTML=`${escapeHtml(el("email").value.trim().split("@")[0])}<br><small>宸茬櫥褰?/small>`;el("loginModal").classList.remove("open")}catch(error){el("loginError").textContent=error.message}};
+    if(token)el("accountButton").innerHTML="宸茬櫥褰?br><small>璐﹀彿璁板繂灏嗗湪鍚庣画鍚屾</small>";render();
   </script>
 </body>
 </html>
+
