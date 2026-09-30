@@ -1,0 +1,19 @@
+name: Keep Supabase project alive
+
+on:
+  schedule:
+    - cron: "0 3 */3 * *"
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Query Supabase to reset its inactivity timer
+        run: |
+          curl -sS -f \
+            "https://jgfixbzsnblfcomjmxuc.supabase.co/rest/v1/leaderboard?select=name&limit=1" \
+            -H "apikey: ${SUPABASE_KEY}" \
+            -H "Authorization: Bearer ${SUPABASE_KEY}"
+        env:
+          SUPABASE_KEY: sb_publishable_trShHiFmgx3kTz_1kZPKqQ_qzMbAQnl
