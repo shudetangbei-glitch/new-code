@@ -3,7 +3,14 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-<meta name="theme-color" content="#02030a">
+<meta name="theme-color" content="#02040c">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="星际突围">
+<link rel="manifest" href="star-raid.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/star-raid-192.png">
+<link rel="apple-touch-icon" href="icons/star-raid-180.png">
 <title>星际突围</title>
 <style>
   :root {
@@ -406,6 +413,7 @@
     <button class="btn primary" id="continueBtn" type="button" hidden></button>
     <button class="btn primary" id="startBtn" type="button">开始出击</button>
     <button class="btn" id="hangarBtn" type="button">🛠 机库升级</button>
+    <button class="btn" id="installBtn" type="button">📲 添加到手机桌面</button>
     <div class="btn-row">
       <button class="btn" id="leaderboardBtn" type="button">🏆 排行榜</button>
       <button class="btn" id="helpBtn" type="button">❓ 玩法</button>
@@ -486,6 +494,14 @@
       <b>暂停：</b>点右上角 ⏸ 或按 Esc / P。
     </div>
     <button class="btn" id="helpClose" type="button">知道了</button>
+  </div>
+</div>
+
+<div class="overlay" id="installHelp" hidden>
+  <div class="panel">
+    <h2>📲 添加到手机桌面</h2>
+    <div class="help-text" id="installText"></div>
+    <button class="btn" id="installClose" type="button">知道了</button>
   </div>
 </div>
 
@@ -2561,7 +2577,7 @@ function showBanner(big, small, boss) {
 }
 
 // ---------- Screens ----------
-const OVERLAYS = ["menu", "hangar", "upgradePick", "pauseMenu", "gameOver", "leaderboard", "help"];
+const OVERLAYS = ["menu", "hangar", "upgradePick", "pauseMenu", "gameOver", "leaderboard", "help", "installHelp"];
 function showOverlay(id) {
   for (const o of OVERLAYS) $(o).hidden = o !== id;
 }
@@ -2891,6 +2907,53 @@ function renderHangar() {
     list.appendChild(row);
   }
 }
+
+// ---------- Add to home screen ----------
+let installPrompt = null;
+const isStandalone = window.matchMedia("(display-mode: standalone)").matches ||
+  window.matchMedia("(display-mode: fullscreen)").matches || window.navigator.standalone === true;
+if (isStandalone) $("installBtn").hidden = true;
+window.addEventListener("beforeinstallprompt", (e) => {
+  e.preventDefault();
+  installPrompt = e;
+});
+window.addEventListener("appinstalled", () => {
+  installPrompt = null;
+  $("installBtn").hidden = true;
+});
+function installInstructions() {
+  const ua = navigator.userAgent;
+  const ios = /iPhone|iPad|iPod/i.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  const lines = [];
+  if (/MicroMessenger/i.test(ua)) {
+    lines.push("<b>微信里不能直接添加。</b>先点右上角「···」→「在浏览器打开」，再按下面的步骤操作。");
+  }
+  if (ios) {
+    lines.push("<b>iPhone / iPad：</b>用 Safari 打开本页，点底部的分享按钮（方框加向上箭头）→ 往下滑，选「添加到主屏幕」→ 点右上角「添加」。");
+    lines.push("<b>注意：</b>从桌面图标打开时，存档和晶石跟 Safari 里是分开的，建议以后都从桌面图标进入。");
+  } else if (/Android/i.test(ua)) {
+    lines.push("<b>安卓手机：</b>点浏览器右上角的菜单（⋮ 或 ≡）→ 选「添加到主屏幕」「安装应用」或「添加到桌面」（不同浏览器叫法不同）。");
+    lines.push("如果菜单里没有这一项，换用 Chrome、Edge 或手机自带浏览器试试。");
+  } else {
+    lines.push("<b>电脑：</b>用 Chrome 或 Edge 打开，点地址栏右侧的「安装」图标，就能像独立软件一样从桌面打开。");
+    lines.push("<b>手机：</b>用手机浏览器打开本页，再点这个按钮查看步骤。");
+  }
+  lines.push("添加后桌面上会出现「星际突围」图标，点开就是全屏游戏，不用再找网址。");
+  return lines.join("<br><br>");
+}
+$("installBtn").addEventListener("click", async () => {
+  if (installPrompt) {
+    const prompt = installPrompt;
+    installPrompt = null;
+    prompt.prompt();
+    const choice = await prompt.userChoice;
+    if (choice && choice.outcome === "accepted") $("installBtn").hidden = true;
+    return;
+  }
+  $("installText").innerHTML = installInstructions();
+  showOverlay("installHelp");
+});
+$("installClose").addEventListener("click", () => showOverlay("menu"));
 
 // ---------- Buttons ----------
 $("startBtn").addEventListener("click", () => {
