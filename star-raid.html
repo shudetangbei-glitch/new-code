@@ -899,7 +899,7 @@ const MASTER_VOL = 0.9;
 const sound = {
   ctx: null, master: null, bus: null, hero: null, satIn: null, verbIn: null, noiseBuf: null, engine: null,
   muted: localStorage.getItem(KEYS.mute) === "1", last: {}, voices: 0, combo: 0, comboAt: 0, beatAt: 0, engineAt: 0,
-  broken: false, failures: 0,
+  broken: false, failures: 0, failAt: 0, mutedUntil: 0, endedAt: 0, lastResume: 0, lowFx: false,
 };
 function softClipCurve(drive) {
   const n = 2048;
@@ -921,6 +921,7 @@ function initAudio() {
   if (sound.broken) return;
   try {
     initAudioGraph();
+    resumeAudio();
   } catch (err) {
     console.warn("audio init failed", err);
     sound.broken = true;
@@ -1006,10 +1007,17 @@ function initAudioGraph() {
     ns.start();
     sound.engine = { gain: eg, filter: ef, o1, o2 };
   }
-  if (sound.ctx.state === "suspended") {
-    const p = sound.ctx.resume();
+}
+function resumeAudio() {
+  const c = sound.ctx;
+  if (!c || c.state === "running" || c.state === "closed") return;
+  const now = performance.now();
+  if (now - sound.lastResume < 300) return;
+  sound.lastResume = now;
+  try {
+    const p = c.resume();
     if (p && p.catch) p.catch(() => {});
-  }
+  } catch (e) {}
 }
 function throttled(name, ms) {
   const now = performance.now();
@@ -1018,12 +1026,28 @@ function throttled(name, ms) {
   return false;
 }
 function ready() {
-  return !!sound.ctx && !sound.muted && !sound.broken && sound.voices < 70;
+  const c = sound.ctx;
+  if (!c || sound.muted || sound.broken || c.state !== "running" || performance.now() < sound.mutedUntil) return false;
+  if (sound.voices >= 70) {
+    if (performance.now() - sound.endedAt > 1500) sound.voices = 0;
+    else return false;
+  }
+  return true;
+}
+function audioFail(where, err) {
+  const t = performance.now();
+  if (t - sound.failAt > 10000) sound.failures = 0;
+  sound.failAt = t;
+  if (++sound.failures > 8) {
+    sound.mutedUntil = t + 15000;
+    sound.failures = 0;
+  }
+  console.warn("audio", where, err);
 }
 function route(node, o) {
   const dest = o.dest === "hero" ? sound.hero : o.dest === "sat" ? sound.satIn : sound.bus;
   node.connect(dest);
-  if (o.verb) {
+  if (o.verb && !sound.lowFx) {
     const s = sound.ctx.createGain();
     s.gain.value = o.verb;
     node.connect(s);
@@ -1067,6 +1091,7 @@ function osc(type, f0, f1, t, dur, peak, o = {}) {
     if (done) return;
     done = true;
     sound.voices--;
+    sound.endedAt = performance.now();
     release([node, g, tail, send]);
   };
 }
@@ -1096,11 +1121,12 @@ function noiseBurst(t, dur, peak, o = {}) {
     if (done) return;
     done = true;
     sound.voices--;
+    sound.endedAt = performance.now();
     release([src, f, g, send]);
   };
 }
 function crackle(t, span, n, peak) {
-  if (sound.voices > 45) return;
+  if (sound.voices > 45 || sound.lowFx) return;
   for (let i = 0; i < n; i++) {
     noiseBurst(t + rand(0.03, span), rand(0.02, 0.05), peak * rand(0.5, 1), { type: "highpass", f0: rand(2500, 5500), f1: 2500, dest: "hero" });
   }
@@ -1276,8 +1302,7 @@ for (const key of Object.keys(sfx)) {
     try {
       fn(...args);
     } catch (err) {
-      if (++sound.failures > 8) sound.broken = true;
-      console.warn("audio", key, err);
+      audioFail(key, err);
     }
   };
 }
@@ -1286,6 +1311,12 @@ function updateAudio(now) {
   if (!e || sound.broken || now - sound.engineAt < 80) return;
   sound.engineAt = now;
   const c = sound.ctx;
+  sound.lowFx = perf.ema > 42;
+  if (c.state !== "running") {
+    resumeAudio();
+    return;
+  }
+  if (performance.now() < sound.mutedUntil) return;
   const t = c.currentTime;
   const flying = (game.mode === "playing" || game.mode === "dying") && player.alive;
   const thr = player.throttle;
@@ -1302,8 +1333,7 @@ function safeUpdateAudio(now) {
   try {
     updateAudio(now);
   } catch (err) {
-    if (++sound.failures > 8) sound.broken = true;
-    console.warn("audio update", err);
+    audioFail("update", err);
   }
 }
 function setMuted(m) {
@@ -2043,6 +2073,7 @@ window.addEventListener("blur", () => {
   if (game.mode === "playing") pauseGame();
 });
 document.addEventListener("visibilitychange", () => {
+  if (!document.hidden) resumeAudio();
   if (document.hidden && game.mode === "playing") pauseGame();
 });
 
@@ -3115,7 +3146,9 @@ function pauseGame() {
   const fps = perf.ema > 0 ? Math.round(1000 / perf.ema) : 0;
   $("pauseDiag").textContent = "诊断：帧率约 " + fps + " · 敌机 " + enemies.length + " · 弹幕 " + eBullets.length +
     " · 分辨率 " + renderer.getPixelRatio().toFixed(2) + "x" + (perf.drops ? "（已自动降 " + perf.drops + " 次）" : "") +
-    (guard.total ? " · 异常 " + guard.total + " 次：" + guard.lastMsg : "");
+    (guard.total ? " · 异常 " + guard.total + " 次：" + guard.lastMsg : "") +
+    " · 音频 " + (sound.broken ? "不可用" : sound.ctx ? sound.ctx.state : "未启动") + "，节点 " + sound.voices +
+    (performance.now() < sound.mutedUntil ? "，暂时静音" : "") + (sound.lowFx ? "，已简化" : "");
   const owned = $("ownedList");
   owned.innerHTML = "";
   const entries = Object.entries(game.upgrades).filter(([id]) => !UPGRADE_BY_ID[id].instant);
