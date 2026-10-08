@@ -3411,11 +3411,17 @@ $("crashHome").addEventListener("click", () => {
   guard.fails = 0;
   openMenu();
 });
+let lostTimer = null;
 canvas.addEventListener("webglcontextlost", () => {
   if (game.mode === "playing") pauseGame();
   showBanner("画面暂时丢失，正在恢复…", "", true);
+  clearTimeout(lostTimer);
+  lostTimer = setTimeout(() => showCrash(new Error("WebGL 画面丢失，浏览器没有自动恢复（可能是手机内存不足）")), 4000);
 });
-canvas.addEventListener("webglcontextrestored", () => showBanner("画面已恢复", "点「继续战斗」即可", false));
+canvas.addEventListener("webglcontextrestored", () => {
+  clearTimeout(lostTimer);
+  showBanner("画面已恢复", "点「继续战斗」即可", false);
+});
 
 let last = performance.now();
 function stepFrame(dt, now) {
