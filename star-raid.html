@@ -1410,6 +1410,8 @@ const game = {
   waveQueue: [],
   spawnT: 0,
   spawnInterval: 1,
+  adaptHp: 1,
+  adaptDmg: 1,
   waveActive: false,
   pendingBossT: 0,
   clearT: 0,
@@ -1677,14 +1679,46 @@ function addShake(v) { shake = Math.min(1.6, shake + v); }
 
 const LATE_START = 25;
 const LATE_SPAN = 50;
-const LATE_HP = 55;
-const LATE_DMG = 1.1;
+const ADAPT_START = 20;
 function late(n) {
   const x = clamp((n - LATE_START) / LATE_SPAN, 0, 1);
   return x * x * (3 - 2 * x);
 }
-function waveHpMul(n) { return (1 + (n - 1) * 0.16 + (n - 1) * (n - 1) * 0.012) * (1 + LATE_HP * late(n)); }
-function waveDmgMul(n) { return (1 + (n - 1) * 0.07) * (1 + LATE_DMG * late(n)); }
+function baseHpMul(n) { return 1 + (n - 1) * 0.16 + (n - 1) * (n - 1) * 0.012; }
+function baseDmgMul(n) { return 1 + (n - 1) * 0.07; }
+function waveHpMul(n) { return baseHpMul(n) * game.adaptHp; }
+function waveDmgMul(n) { return baseDmgMul(n) * game.adaptDmg; }
+
+// Adaptive difficulty: after wave ADAPT_START enemy strength follows the ship's actual power, so a
+// stronger build keeps facing a fight while weaker builds are not walled. Offense is dampened
+// (power^0.65) so upgrades still make enemies die faster, and changes are rate-limited per wave.
+function shipPower() {
+  const crit = 1 + clamp(stats.critChance, 0, 1) * (stats.critMult - 1);
+  const aoe = 1 + 0.04 * stats.pierce + 0.05 * stats.missiles + 0.03 * stats.orbitals + (stats.explodeRadius ? 0.15 : 0) + (stats.chainChance ? 0.15 : 0);
+  const dps = stats.damage * stats.fireRate * stats.projectiles * crit * aoe * (stats.rearGuns ? 1.05 : 1) * (stats.berserk ? 1.08 : 1);
+  const durability = stats.maxHp + stats.maxShield + 12 * stats.regen;
+  return { dps, durability };
+}
+function adaptTargets(n) {
+  if (n <= ADAPT_START) return { hp: 1, dmg: 1 };
+  const pw = shipPower();
+  const ttk = 1.7 * Math.pow(clamp((n - ADAPT_START) / 80, 0, 1.6), 1.3);
+  const unitHp = ttk * Math.pow(0.6 * pw.dps, 0.65) * Math.pow(1e5, 0.35);
+  const hp = clamp(unitHp / (22 * baseHpMul(n)), 1, 120);
+  const hits = 14 - 10.5 * Math.pow(clamp((n - 25) / 75, 0, 1), 0.8);
+  const dmg = clamp((pw.durability / hits) / (14 * baseDmgMul(n)), 1, 3);
+  return { hp, dmg };
+}
+function computeAdapt(n, immediate) {
+  const t = adaptTargets(n);
+  if (immediate) {
+    game.adaptHp = t.hp;
+    game.adaptDmg = t.dmg;
+    return;
+  }
+  game.adaptHp = clamp(t.hp, game.adaptHp / 1.06, game.adaptHp * 1.15);
+  game.adaptDmg = clamp(t.dmg, game.adaptDmg / 1.04, game.adaptDmg * 1.12);
+}
 
 function spawnEnemy(type, x, z, elite) {
   const def = ENEMY_TYPES[type];
@@ -1692,7 +1726,7 @@ function spawnEnemy(type, x, z, elite) {
   const e = {
     type, def, x, z, vx: 0, vz: 0, hp, maxHp: hp,
     r: def.r * 1.25 * (elite ? 1.3 : 1),
-    speed: def.speed * (1 + Math.min(0.25, (game.wave - 1) * 0.012) + 0.35 * late(game.wave)) * (elite ? 0.9 : 1),
+    speed: def.speed * (1 + Math.min(0.25, (game.wave - 1) * 0.012) + 0.35 * late(game.wave)) * (1 + (Math.pow(clamp(stats.speed / 15, 1, 1.6), 0.6) - 1) * late(game.wave)) * (elite ? 0.9 : 1),
     dmg: def.dmg * waveDmgMul(game.wave),
     elite, t: rand(0, 2), state: "approach", stateT: 0, flash: 0, orbHit: 0,
     fireT: rand(1, 2.5), strafe: Math.random() < 0.5 ? 1 : -1, lockX: 0, lockZ: 0, dead: false,
@@ -1745,8 +1779,9 @@ function queuedCount() {
   return game.waveQueue.reduce((s, g) => s + g.count, 0);
 }
 
-function beginWave(n) {
+function beginWave(n, immediate) {
   game.wave = n;
+  computeAdapt(n, immediate);
   const isBoss = n % 5 === 0;
   game.waveQueue = buildWaveQueue(n, isBoss ? 0.35 : 1);
   game.spawnInterval = Math.max(0.28 - 0.12 * late(n), 1.25 - n * 0.045);
@@ -3059,7 +3094,9 @@ function startRun(snapshot) {
   $("hud").hidden = false;
   showOverlay(null);
   game.mode = "playing";
-  beginWave(snapshot ? snapshot.wave : 1);
+  game.adaptHp = 1;
+  game.adaptDmg = 1;
+  beginWave(snapshot ? snapshot.wave : 1, !!snapshot);
 }
 function saveRunSnapshot() {
   saveJSON(KEYS.run, {
@@ -3161,6 +3198,7 @@ function pauseGame() {
   $("pauseSub").textContent = `第 ${game.wave} 波 · 得分 ${game.score.toLocaleString()} · 💎 ${Math.floor(game.runCrystals)}`;
   const fps = perf.ema > 0 ? Math.round(1000 / perf.ema) : 0;
   $("pauseDiag").textContent = "诊断：帧率约 " + fps + " · 敌机 " + enemies.length + " · 弹幕 " + eBullets.length +
+    " · 敌方强度 血量×" + game.adaptHp.toFixed(1) + " 伤害×" + game.adaptDmg.toFixed(2) +
     " · 分辨率 " + renderer.getPixelRatio().toFixed(2) + "x" + (perf.drops ? "（已自动降 " + perf.drops + " 次）" : "") +
     (guard.total ? " · 异常 " + guard.total + " 次：" + guard.lastMsg : "") +
     " · 音频 " + (sound.broken ? "不可用" : sound.ctx ? sound.ctx.state : "未启动") + "，节点 " + sound.voices +
