@@ -445,6 +445,7 @@
   <div class="panel">
     <h2>已暂停</h2>
     <p class="sub" id="pauseSub"></p>
+    <p class="sub" id="pauseDiag" style="font-size:11px;opacity:.6;word-break:break-all"></p>
     <div class="owned" id="ownedList"></div>
     <button class="btn primary" id="resumeBtn" type="button">继续战斗</button>
     <button class="btn" id="pauseMuteBtn" type="button">🔊</button>
@@ -820,13 +821,14 @@ attribute vec3 pcolor;
 attribute float psize;
 attribute float palpha;
 uniform float scale;
+uniform float maxPoint;
 varying vec3 vColor;
 varying float vAlpha;
 void main() {
   vColor = pcolor;
   vAlpha = palpha;
   vec4 mv = modelViewMatrix * vec4(position, 1.0);
-  gl_PointSize = psize * scale / max(0.1, -mv.z);
+  gl_PointSize = min(psize * scale / max(2.0, -mv.z), maxPoint);
   gl_Position = projectionMatrix * mv;
 }`;
 const GLOW_FRAG = `
@@ -859,7 +861,7 @@ class GlowPoints {
     });
     geo.setDrawRange(0, 0);
     const mat = new THREE.ShaderMaterial({
-      uniforms: { map: { value: glowTex }, scale: { value: 300 } },
+      uniforms: { map: { value: glowTex }, scale: { value: 300 }, maxPoint: { value: 200 } },
       vertexShader: GLOW_VERT,
       fragmentShader: GLOW_FRAG,
       transparent: true,
@@ -1743,6 +1745,7 @@ function spawnBoss() {
 }
 
 function fireEnemyBullet(x, z, angle, speed, dmg, size, color, bvx = 0, bvz = 0) {
+  if (eBullets.length >= 240) return;
   const b = bulletPool.pop() || {};
   b.x = x; b.z = z;
   b.vx = Math.cos(angle) * speed + bvx; b.vz = Math.sin(angle) * speed + bvz;
@@ -2790,7 +2793,10 @@ const cam = { x: 0, z: 0, heading: -Math.PI / 2, orbit: 0.6 };
 function updateGlowScale() {
   const h = renderer.domElement.height;
   const scale = h / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2)));
-  for (const m of glowMaterials) m.uniforms.scale.value = scale;
+  for (const m of glowMaterials) {
+    m.uniforms.scale.value = scale;
+    m.uniforms.maxPoint.value = 130 * renderer.getPixelRatio();
+  }
 }
 function setFov(target, dt) {
   const next = dt ? camera.fov + (target - camera.fov) * (1 - Math.exp(-4 * dt)) : target;
@@ -3106,6 +3112,10 @@ function pauseGame() {
   releaseJoystick();
   input.keys.clear();
   $("pauseSub").textContent = `第 ${game.wave} 波 · 得分 ${game.score.toLocaleString()} · 💎 ${Math.floor(game.runCrystals)}`;
+  const fps = perf.ema > 0 ? Math.round(1000 / perf.ema) : 0;
+  $("pauseDiag").textContent = "诊断：帧率约 " + fps + " · 敌机 " + enemies.length + " · 弹幕 " + eBullets.length +
+    " · 分辨率 " + renderer.getPixelRatio().toFixed(2) + "x" + (perf.drops ? "（已自动降 " + perf.drops + " 次）" : "") +
+    (guard.total ? " · 异常 " + guard.total + " 次：" + guard.lastMsg : "");
   const owned = $("ownedList");
   owned.innerHTML = "";
   const entries = Object.entries(game.upgrades).filter(([id]) => !UPGRADE_BY_ID[id].instant);
@@ -3380,7 +3390,8 @@ function resize() {
 window.addEventListener("resize", resize);
 resize();
 
-const guard = { fails: 0, shown: false };
+const guard = { fails: 0, shown: false, total: 0, lastMsg: "" };
+const perf = { ema: 16, slow: 0 };
 function showCrash(err) {
   if (guard.shown) return;
   guard.shown = true;
@@ -3429,16 +3440,37 @@ function stepFrame(dt, now) {
   drawRadar();
   renderer.render(scene, camera);
 }
+function checkQuality(rawMs, dt) {
+  perf.ema += (Math.min(rawMs, 500) - perf.ema) * 0.08;
+  if (game.mode !== "playing" || rawMs > 500) {
+    perf.slow = 0;
+    return;
+  }
+  if (perf.ema > 48) perf.slow += dt;
+  else perf.slow = Math.max(0, perf.slow - dt);
+  const ratio = renderer.getPixelRatio();
+  if (perf.slow > 2.5 && ratio > 0.76) {
+    perf.slow = 0;
+    perf.ema = 30;
+    perf.drops = (perf.drops || 0) + 1;
+    renderer.setPixelRatio(Math.max(0.75, ratio * 0.8));
+    resize();
+  }
+}
 function frame(now) {
   requestAnimationFrame(frame);
-  const dt = Math.min(0.05, Math.max(0, (now - last) / 1000));
+  const rawMs = now - last;
+  const dt = Math.min(0.05, Math.max(0, rawMs / 1000));
   last = now;
   try {
     stepFrame(dt, now);
     guard.fails = 0;
   } catch (err) {
+    guard.total++;
+    guard.lastMsg = String(err && err.message ? err.message : err).slice(0, 120);
     if (++guard.fails >= 4) showCrash(err);
   }
+  checkQuality(rawMs, dt);
 }
 
 setMuted(sound.muted);
