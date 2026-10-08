@@ -1675,8 +1675,16 @@ function lightning(x1, z1, x2, z2) {
 let shake = 0;
 function addShake(v) { shake = Math.min(1.6, shake + v); }
 
-function waveHpMul(n) { return 1 + (n - 1) * 0.16 + (n - 1) * (n - 1) * 0.012; }
-function waveDmgMul(n) { return 1 + (n - 1) * 0.07; }
+const LATE_START = 25;
+const LATE_SPAN = 50;
+const LATE_HP = 55;
+const LATE_DMG = 1.1;
+function late(n) {
+  const x = clamp((n - LATE_START) / LATE_SPAN, 0, 1);
+  return x * x * (3 - 2 * x);
+}
+function waveHpMul(n) { return (1 + (n - 1) * 0.16 + (n - 1) * (n - 1) * 0.012) * (1 + LATE_HP * late(n)); }
+function waveDmgMul(n) { return (1 + (n - 1) * 0.07) * (1 + LATE_DMG * late(n)); }
 
 function spawnEnemy(type, x, z, elite) {
   const def = ENEMY_TYPES[type];
@@ -1684,7 +1692,7 @@ function spawnEnemy(type, x, z, elite) {
   const e = {
     type, def, x, z, vx: 0, vz: 0, hp, maxHp: hp,
     r: def.r * 1.25 * (elite ? 1.3 : 1),
-    speed: def.speed * (1 + Math.min(0.25, (game.wave - 1) * 0.012)) * (elite ? 0.9 : 1),
+    speed: def.speed * (1 + Math.min(0.25, (game.wave - 1) * 0.012) + 0.35 * late(game.wave)) * (elite ? 0.9 : 1),
     dmg: def.dmg * waveDmgMul(game.wave),
     elite, t: rand(0, 2), state: "approach", stateT: 0, flash: 0, orbHit: 0,
     fireT: rand(1, 2.5), strafe: Math.random() < 0.5 ? 1 : -1, lockX: 0, lockZ: 0, dead: false,
@@ -1717,7 +1725,7 @@ function buildWaveQueue(n, budgetScale) {
   let budget = (9 + n * 4.5 + n * n * 0.15) * budgetScale;
   const pool = WAVE_POOL.filter((p) => n >= p.from);
   const queue = [];
-  const eliteChance = n >= 4 ? Math.min(0.2, 0.04 + n * 0.006) : 0;
+  const eliteChance = n >= 4 ? Math.min(0.2, 0.04 + n * 0.006) + 0.25 * late(n) : 0;
   while (budget > 0.5) {
     const options = pool.filter((p) => p.cost <= budget + 0.01);
     if (!options.length) break;
@@ -1741,7 +1749,7 @@ function beginWave(n) {
   game.wave = n;
   const isBoss = n % 5 === 0;
   game.waveQueue = buildWaveQueue(n, isBoss ? 0.35 : 1);
-  game.spawnInterval = Math.max(0.28, 1.25 - n * 0.045);
+  game.spawnInterval = Math.max(0.28 - 0.12 * late(n), 1.25 - n * 0.045);
   game.spawnT = isBoss ? 4 : 1.2;
   game.pendingBossT = isBoss ? 2.4 : 0;
   game.waveActive = true;
@@ -1756,7 +1764,7 @@ function beginWave(n) {
 
 function spawnBoss() {
   const tier = game.wave / 5;
-  const hp = 600 * waveHpMul(game.wave) * (1 + 0.15 * (tier - 1));
+  const hp = 600 * waveHpMul(game.wave) * (1 + 0.15 * (tier - 1)) * (1 - 0.5 * late(game.wave));
   const x = player.x + Math.cos(player.heading) * 42, z = player.z + Math.sin(player.heading) * 42;
   const mesh = buildBossMesh(tier);
   mesh.scale.setScalar(1.5);
@@ -1866,6 +1874,11 @@ function killEnemy(e) {
   let n = Math.floor(value) + (Math.random() < value % 1 ? 1 : 0);
   for (let i = 0; i < n; i++) dropPickup("crystal", e.x, e.z, 1);
   if (Math.random() < (e.elite ? 0.35 : 0.025)) dropPickup("heal", e.x, e.z, 1);
+  if (e.elite && game.wave > LATE_START && player.alive) {
+    const ring = 8 + Math.floor(8 * late(game.wave));
+    const off = Math.random() * TAU;
+    for (let i = 0; i < ring; i++) fireEnemyBullet(e.x, e.z, off + (i / ring) * TAU, 10, 8 * waveDmgMul(game.wave), 1.3, COL.gold);
+  }
   if (e.type === "tank") {
     for (let i = 0; i < 3; i++) {
       const a = (i / 3) * TAU + Math.random();
@@ -2178,7 +2191,7 @@ function updateWave(dt) {
   }
   if (game.waveQueue.length) {
     game.spawnT -= dt;
-    if (game.spawnT <= 0 && enemies.length < MAX_ALIVE) {
+    if (game.spawnT <= 0 && enemies.length < MAX_ALIVE + Math.round(7 * late(game.wave))) {
       const g = game.waveQueue.shift();
       const p = spawnPoint();
       for (let i = 0; i < g.count; i++) {
@@ -2226,9 +2239,9 @@ function updateEnemies(dt) {
         if (Math.random() < dt * 0.15) e.strafe *= -1;
         e.fireT -= dt;
         if (e.fireT <= 0 && dist < 30 && player.alive) {
-          e.fireT = rand(1.8, 2.4);
+          e.fireT = rand(1.8, 2.4) / (1 + 1.2 * late(game.wave));
           const a = Math.atan2(dz, dx);
-          const shots = game.wave >= 8 ? 3 : 1;
+          const shots = (game.wave >= 8 ? 3 : 1) + (game.wave >= 40 ? 1 : 0) + (game.wave >= 70 ? 1 : 0);
           for (let s = 0; s < shots; s++) fireEnemyBullet(e.x, e.z, a + (s - (shots - 1) / 2) * 0.2, 13, 10 * waveDmgMul(game.wave), 1.3, COL.pink, e.vx, e.vz);
         }
         break;
@@ -2284,9 +2297,10 @@ function updateEnemies(dt) {
         }
         e.fireT -= dt;
         if (e.fireT <= 0 && dist < 28 && player.alive) {
-          e.fireT = 3.2;
+          e.fireT = 3.2 / (1 + 0.8 * late(game.wave));
           const off = Math.random() * TAU;
-          for (let s = 0; s < 8; s++) fireEnemyBullet(e.x, e.z, off + (s / 8) * TAU, 10, 9 * waveDmgMul(game.wave), 1.2, COL.orange, e.vx, e.vz);
+          const ring = 8 + Math.floor(8 * late(game.wave));
+          for (let s = 0; s < ring; s++) fireEnemyBullet(e.x, e.z, off + (s / ring) * TAU, 10, 9 * waveDmgMul(game.wave), 1.2, COL.orange, e.vx, e.vz);
         }
         break;
       }
@@ -2396,12 +2410,14 @@ function updateBoss(e, dt) {
     }
     return;
   }
-  if (!e.enraged && e.hp < e.maxHp * 0.4) {
+  if (!e.enraged && e.hp < e.maxHp * (0.4 + 0.2 * late(game.wave))) {
     e.enraged = true;
     sfx.enrage();
     showBanner("BOSS 狂暴化", "", true);
   }
-  const rate = e.enraged ? 0.72 : 1;
+  const lt = late(game.wave);
+  const bs = 1 + 0.35 * lt;
+  const rate = e.enraged ? 0.72 - 0.2 * lt : 1;
   const dx = player.x - e.x, dz = player.z - e.z;
   const dist = Math.hypot(dx, dz) || 0.001;
   const aimA = Math.atan2(dz, dx);
@@ -2442,9 +2458,9 @@ function updateBoss(e, dt) {
     e.pattern = available[e.idx];
     e.fireT = 0;
     e.state = "";
-    e.patternT = { burst: 2.9, spiral: 3.2, fan: 2.6, summon: 1.6, charge: 2.3 }[e.pattern] * (e.enraged ? 0.85 : 1);
+    e.patternT = { burst: 2.9, spiral: 3.2, fan: 2.6, summon: 1.6, charge: 2.3 }[e.pattern] * (e.enraged ? 0.85 : 1) * (1 - 0.25 * lt);
     if (e.pattern === "summon") {
-      const count = 3 + e.tier;
+      const count = Math.min(12, 3 + e.tier);
       for (let i = 0; i < count; i++) {
         const a = (i / count) * TAU;
         spawnEnemy(i % 2 ? "swarm" : "drone", e.x + Math.cos(a) * 6, e.z + Math.sin(a) * 6, false);
@@ -2458,17 +2474,17 @@ function updateBoss(e, dt) {
   }
   if (e.pattern === "burst" && e.fireT <= 0) {
     e.fireT = 0.55 * rate;
-    const count = 14 + e.tier * 2;
+    const count = Math.min(40, 14 + e.tier * 2);
     const off = e.spin * 0.7;
-    for (let i = 0; i < count; i++) fireEnemyBullet(e.x, e.z, off + (i / count) * TAU, 10.5, bulletDmg, 1.6, COL.pink, e.vx, e.vz);
+    for (let i = 0; i < count; i++) fireEnemyBullet(e.x, e.z, off + (i / count) * TAU, 10.5 * bs, bulletDmg, 1.6, COL.pink, e.vx, e.vz);
   } else if (e.pattern === "spiral" && e.fireT <= 0) {
     e.fireT = 0.075 * rate;
-    const arms = e.tier >= 3 ? 3 : 2;
-    for (let i = 0; i < arms; i++) fireEnemyBullet(e.x, e.z, e.spin * 3.2 + (i / arms) * TAU, 11, bulletDmg, 1.4, COL.orange, e.vx, e.vz);
+    const arms = Math.min(5, (e.tier >= 3 ? 3 : 2) + Math.floor(lt * 2.5));
+    for (let i = 0; i < arms; i++) fireEnemyBullet(e.x, e.z, e.spin * 3.2 + (i / arms) * TAU, 11 * bs, bulletDmg, 1.4, COL.orange, e.vx, e.vz);
   } else if (e.pattern === "fan" && e.fireT <= 0) {
     e.fireT = 0.5 * rate;
-    const count = e.enraged ? 7 : 5;
-    for (let i = 0; i < count; i++) fireEnemyBullet(e.x, e.z, aimA + (i - (count - 1) / 2) * 0.16, 14, bulletDmg, 1.5, COL.pink, e.vx, e.vz);
+    const count = (e.enraged ? 7 : 5) + Math.floor(lt * 4);
+    for (let i = 0; i < count; i++) fireEnemyBullet(e.x, e.z, aimA + (i - (count - 1) / 2) * 0.16, 14 * bs, bulletDmg, 1.5, COL.pink, e.vx, e.vz);
   } else if (e.pattern === "charge") {
     if (e.state === "tele") {
       e.stateT -= dt;
