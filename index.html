@@ -2,16 +2,30 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>面料颜色搭配工具</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>贝的小应用</title>
+<meta name="description" content="所有小游戏和小工具的入口">
+<link rel="apple-touch-icon" href="icons/star-raid-180.png">
 <style>
   :root {
-    --bg: #faf8f5;
+    --bg: #f6f4f0;
     --card: #ffffff;
-    --text: #2b2b2b;
-    --muted: #8a8a8a;
+    --text: #23211e;
+    --muted: #7d7870;
+    --border: #e6e1d8;
     --accent: #b08d57;
-    --border: #e8e3db;
+    --shadow: 0 1px 2px rgba(0,0,0,.04), 0 4px 14px rgba(0,0,0,.05);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #141312;
+      --card: #1e1d1b;
+      --text: #ece8e1;
+      --muted: #9a948a;
+      --border: #2e2c29;
+      --accent: #d2ad72;
+      --shadow: none;
+    }
   }
   * { box-sizing: border-box; }
   body {
@@ -19,223 +33,77 @@
     font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
     background: var(--bg);
     color: var(--text);
-    padding: 20px 16px 60px;
+    padding: 32px 16px 60px;
   }
-  header {
-    text-align: center;
-    margin-bottom: 24px;
-  }
-  header h1 {
-    font-size: 20px;
-    font-weight: 600;
-    margin: 0 0 4px;
-  }
-  header p {
+  main { max-width: 760px; margin: 0 auto; }
+  header { margin-bottom: 28px; }
+  header h1 { font-size: 26px; margin: 0 0 6px; }
+  header p { margin: 0; color: var(--muted); font-size: 14px; }
+  h2 {
     font-size: 13px;
-    color: var(--muted);
-    margin: 0;
-  }
-  .section-title {
-    font-size: 14px;
     font-weight: 600;
     color: var(--muted);
-    margin: 20px 0 10px 4px;
-    letter-spacing: 1px;
+    letter-spacing: .08em;
+    margin: 28px 0 12px;
   }
-  .swatch-grid {
+  .grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
     gap: 12px;
   }
-  .swatch {
+  a.app {
     display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 6px;
-    cursor: pointer;
-    background: none;
-    border: none;
-    padding: 0;
-    font-family: inherit;
-  }
-  .swatch .chip {
-    width: 56px;
-    height: 56px;
-    border-radius: 16px;
-    border: 1px solid var(--border);
-    box-shadow: 0 2px 6px rgba(0,0,0,0.06);
-    transition: transform 0.15s ease, box-shadow 0.15s ease;
-  }
-  .swatch.selected .chip {
-    transform: scale(1.08);
-    box-shadow: 0 0 0 3px var(--accent), 0 4px 10px rgba(0,0,0,0.12);
-  }
-  .swatch span {
-    font-size: 12px;
-    color: var(--text);
-  }
-  .result-card {
-    margin-top: 24px;
-    background: var(--card);
-    border-radius: 20px;
-    padding: 20px 18px;
-    box-shadow: 0 4px 16px rgba(0,0,0,0.06);
-    display: none;
-  }
-  .result-card.show { display: block; }
-  .result-main {
-    display: flex;
-    align-items: center;
     gap: 14px;
-    padding-bottom: 16px;
-    border-bottom: 1px solid var(--border);
-    margin-bottom: 16px;
-  }
-  .result-main .chip-lg {
-    width: 48px;
-    height: 48px;
-    border-radius: 14px;
-    border: 1px solid var(--border);
-    flex-shrink: 0;
-  }
-  .result-main .label {
-    font-size: 13px;
-    color: var(--muted);
-  }
-  .result-main .name {
-    font-size: 18px;
-    font-weight: 600;
-  }
-  .match-list {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-  }
-  .match-item {
-    display: flex;
     align-items: center;
-    gap: 12px;
-  }
-  .match-item .chip-md {
-    width: 40px;
-    height: 40px;
-    border-radius: 12px;
+    padding: 14px 16px;
+    background: var(--card);
     border: 1px solid var(--border);
-    flex-shrink: 0;
+    border-radius: 14px;
+    box-shadow: var(--shadow);
+    color: inherit;
+    text-decoration: none;
+    transition: transform .15s, border-color .15s;
   }
-  .match-item .name {
-    font-size: 15px;
-    font-weight: 500;
+  a.app:hover, a.app:focus-visible { transform: translateY(-2px); border-color: var(--accent); outline: none; }
+  a.app:active { transform: scale(.98); }
+  .icon {
+    flex: none;
+    width: 44px; height: 44px;
+    border-radius: 12px;
+    display: grid; place-items: center;
+    font-size: 24px;
+    background: var(--bg);
   }
-  .match-item .desc {
-    font-size: 12px;
-    color: var(--muted);
-  }
-  .placeholder {
-    text-align: center;
-    color: var(--muted);
-    font-size: 13px;
-    padding: 30px 10px;
-  }
+  .name { font-size: 16px; font-weight: 600; margin-bottom: 3px; }
+  .desc { font-size: 13px; color: var(--muted); line-height: 1.4; }
 </style>
 </head>
 <body>
+<main>
+  <header>
+    <h1>贝的小应用</h1>
+    <p>点开就能玩、就能用，手机电脑都可以</p>
+  </header>
 
-<header>
-  <h1>面料颜色搭配工具</h1>
-  <p>选择一个主色，查看推荐搭配</p>
-</header>
-
-<div class="section-title">主色选择</div>
-<div class="swatch-grid" id="mainGrid"></div>
-
-<div class="result-card" id="resultCard">
-  <div class="result-main">
-    <div class="chip-lg" id="mainChip"></div>
-    <div>
-      <div class="label">当前主色</div>
-      <div class="name" id="mainName"></div>
-    </div>
+  <h2>小游戏</h2>
+  <div class="grid">
+    <a class="app" href="star-raid.html"><span class="icon">🚀</span><span><div class="name">星际突围</div><div class="desc">3D 太空射击，升级战机闯关</div></span></a>
+    <a class="app" href="sokoban-3d.html"><span class="icon">📦</span><span><div class="name">方仓 · 机关浮岛</div><div class="desc">3D 推箱子解谜</div></span></a>
+    <a class="app" href="merge-defense.html"><span class="icon">🏰</span><span><div class="name">合成守城</div><div class="desc">部署、合成炮塔，守住敌潮</div></span></a>
+    <a class="app" href="gear-factory.html"><span class="icon">⚙️</span><span><div class="name">齿轮工厂</div><div class="desc">选对齿轮，把动力送到机器</div></span></a>
+    <a class="app" href="minesweeper.html"><span class="icon">💣</span><span><div class="name">扫雷</div><div class="desc">经典扫雷，带排行榜</div></span></a>
+    <a class="app" href="2048.html"><span class="icon">🔢</span><span><div class="name">2048</div><div class="desc">划动合并数字</div></span></a>
+    <a class="app" href="level-game.html"><span class="icon">🎯</span><span><div class="name">星点突围</div><div class="desc">点中星点，闯过五个关卡</div></span></a>
+    <a class="app" href="game.html"><span class="icon">⭐</span><span><div class="name">接住星光</div><div class="desc">30 秒接星星、躲陨石</div></span></a>
   </div>
-  <div class="section-title" style="margin:0 0 12px;">推荐搭配色</div>
-  <div class="match-list" id="matchList"></div>
-</div>
 
-<div class="placeholder" id="placeholder">点击上方色块查看搭配建议</div>
-
-<script>
-const colors = [
-  { key: "miBai",  name: "米白", hex: "#F1EBDD" },
-  { key: "cangQing", name: "藏青", hex: "#1C2B4A" },
-  { key: "tuoSe",  name: "驼色", hex: "#C29B6C" },
-  { key: "kaQi",   name: "卡其", hex: "#C6B48A" },
-  { key: "shenHui",name: "深灰", hex: "#4E4E4E" },
-  { key: "hei",    name: "黑",   hex: "#1A1A1A" },
-  { key: "bai",    name: "白",   hex: "#FFFFFF" },
-  { key: "hongZong",name: "红棕", hex: "#8F4A2C" },
-  { key: "moLv",   name: "墨绿", hex: "#2B4436" },
-  { key: "qianLan",name: "浅蓝", hex: "#A9C6E0" },
-];
-
-const colorMap = Object.fromEntries(colors.map(c => [c.key, c]));
-
-const matches = {
-  miBai:   ["cangQing", "tuoSe", "qianLan"],
-  cangQing:["miBai", "kaQi", "bai"],
-  tuoSe:   ["cangQing", "shenHui", "bai"],
-  kaQi:    ["cangQing", "bai", "hongZong"],
-  shenHui: ["qianLan", "bai", "hei"],
-  hei:     ["bai", "hongZong", "qianLan"],
-  bai:     ["hei", "cangQing", "hongZong"],
-  hongZong:["kaQi", "miBai", "hei"],
-  moLv:    ["miBai", "tuoSe", "hei"],
-  qianLan: ["bai", "shenHui", "miBai"],
-};
-
-const mainGrid = document.getElementById("mainGrid");
-const resultCard = document.getElementById("resultCard");
-const placeholder = document.getElementById("placeholder");
-const mainChip = document.getElementById("mainChip");
-const mainName = document.getElementById("mainName");
-const matchList = document.getElementById("matchList");
-
-colors.forEach(c => {
-  const btn = document.createElement("button");
-  btn.className = "swatch";
-  btn.dataset.key = c.key;
-  btn.innerHTML = `<div class="chip" style="background:${c.hex}"></div><span>${c.name}</span>`;
-  btn.addEventListener("click", () => selectColor(c.key));
-  mainGrid.appendChild(btn);
-});
-
-function selectColor(key) {
-  document.querySelectorAll(".swatch").forEach(el => {
-    el.classList.toggle("selected", el.dataset.key === key);
-  });
-
-  const main = colorMap[key];
-  mainChip.style.background = main.hex;
-  mainName.textContent = main.name;
-
-  matchList.innerHTML = "";
-  matches[key].forEach(mKey => {
-    const m = colorMap[mKey];
-    const row = document.createElement("div");
-    row.className = "match-item";
-    row.innerHTML = `
-      <div class="chip-md" style="background:${m.hex}"></div>
-      <div>
-        <div class="name">${m.name}</div>
-        <div class="desc">${m.hex.toUpperCase()}</div>
-      </div>
-    `;
-    matchList.appendChild(row);
-  });
-
-  resultCard.classList.add("show");
-  placeholder.style.display = "none";
-}
-</script>
-
+  <h2>小工具</h2>
+  <div class="grid">
+    <a class="app" href="daily-cheer.html"><span class="icon">💌</span><span><div class="name">每日暖心话</div><div class="desc">每天一句暖心的话</div></span></a>
+    <a class="app" href="nearby.html"><span class="icon">📍</span><span><div class="name">附近推荐</div><div class="desc">吃饭、休闲、住宿，一键导航</div></span></a>
+    <a class="app" href="outfit-colors.html"><span class="icon">👗</span><span><div class="name">穿搭配色工具</div><div class="desc">选主色和风格，看搭配</div></span></a>
+    <a class="app" href="fabric-colors.html"><span class="icon">🧵</span><span><div class="name">面料颜色搭配工具</div><div class="desc">选一个主色，看推荐搭配</div></span></a>
+  </div>
+</main>
 </body>
 </html>
