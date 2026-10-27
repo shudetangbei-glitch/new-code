@@ -23,8 +23,7 @@
 | --- | --- | --- |
 | 每日暖心话 | `daily-cheer.html` | 每天一句暖心话，需登录 |
 | 附近推荐 | `nearby.html` | 基于定位的附近吃喝玩乐推荐（高德地图） |
-| 穿搭配色工具 | `outfit-colors.html` | 穿搭颜色推荐 |
-| 面料颜色搭配工具 | `fabric-colors.html` | 面料颜色推荐 |
+| 穿搭配色工具 | `outfit-colors.html` | 选主色和风格看搭配（原面料颜色工具已并入，`fabric-colors.html` 会跳转到这里） |
 
 ## 数据存储
 
