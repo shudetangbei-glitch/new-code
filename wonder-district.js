@@ -1,10 +1,10 @@
 import * as T from './three-runtime.js?v=mobile-1';
-import {loadCityArt} from './city-art.js?v=district-1';
+import {loadCityArt} from './city-art.js?v=weaknet-1';
 import {HDRLoader} from './art-loader.js?v=district-1';
 export async function createCity(canvas){
 const mobile=matchMedia('(pointer:coarse)').matches,renderer=new T.WebGLRenderer({canvas,antialias:!mobile});renderer.setPixelRatio(Math.min(devicePixelRatio,mobile?1.25:1.7));renderer.shadowMap.enabled=true;renderer.shadowMap.type=T.PCFSoftShadowMap;renderer.toneMapping=T.ACESFilmicToneMapping;renderer.toneMappingExposure=1.25;
 const scene=new T.Scene();scene.background=new T.Color(0xb7cbd3);scene.fog=new T.Fog(0xb7cbd3,45,130);const camera=new T.PerspectiveCamera(57,1,.08,220);const sky=new T.HemisphereLight(0xe4eff5,0x676650,1);scene.add(sky);const sun=new T.DirectionalLight(0xffe1b1,3.2);sun.position.set(-22,40,18);sun.castShadow=true;sun.shadow.mapSize.set(mobile?1024:2048,mobile?1024:2048);Object.assign(sun.shadow.camera,{left:-45,right:45,top:45,bottom:-45,far:130});sun.shadow.normalBias=.04;scene.add(sun);
-const art=await loadCityArt(T,renderer);scene.environment=art.environment;scene.environmentIntensity=.6;
+const art=await loadCityArt(T,renderer,message=>{const label=document.getElementById('loading');if(label)label.textContent=message;});canvas.dataset.avatarMode=art.avatarMode;scene.environment=art.environment;scene.environmentIntensity=.6;
 try{const hdr=await new HDRLoader().loadAsync('./art/city-sky.hdr');hdr.mapping=T.EquirectangularReflectionMapping;const pmrem=new T.PMREMGenerator(renderer);scene.environment=pmrem.fromEquirectangular(hdr).texture;scene.background=hdr;scene.backgroundIntensity=.85;scene.environmentIntensity=.7;pmrem.dispose();}catch{scene.background=new T.Color(0xb7cbd3);}
 const asphalt=art.surface('asphalt_02',0x90918d),paving=art.surface('brick_pavement',0xd7d1be),stone=new T.MeshStandardMaterial({color:0xbbb7a7,roughness:.9}),grass=new T.MeshStandardMaterial({color:0x667a50,roughness:1}),iron=new T.MeshStandardMaterial({color:0x3c4846,metalness:.6,roughness:.4});
 const colors=[0xdb826e,0x6daca2,0xd6b168,0x939ab8];const material=c=>typeof c==='number'?new T.MeshStandardMaterial({color:c,roughness:.65}):c;
@@ -52,4 +52,3 @@ const actor=roaming?visitor:actors[focus],heading=actor.userData.heading+angle;i
 function pose(g,moving,dt,paused){const r=g.userData.rig;r.weight+=(Number(moving)-r.weight)*Math.min(1,dt*8);r.walk.setEffectiveWeight(r.weight);r.idle.setEffectiveWeight(1-r.weight);if(!paused)r.mixer.update(dt);g.rotation.y=g.userData.heading;}
 resize();requestAnimationFrame(animate);return {update,home(){if(roaming){firstPerson=!firstPerson;mapView=false;mapButton.title=firstPerson?'返回第三人称':'切换第一人称';}else{mapView=!mapView;mapButton.title=mapView?'返回街景':'切换全景地图';}angle=0;zoom=1;ready=false;resize();}};
 }
-
