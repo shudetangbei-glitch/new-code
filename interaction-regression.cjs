@@ -10,7 +10,7 @@ async function fixture(context,data){await context.addInitScript(data=>{localSto
  try{
   const context=await browser.newContext({viewport:{width:390,height:844},isMobile:true,hasTouch:true}),p=await context.newPage(),errors=[];p.on('pageerror',e=>errors.push(e.message));
   await fixture(context,{mode:'local',state:state()});await context.addInitScript(()=>{crypto.getRandomValues=array=>array.fill(0);});
-  await p.goto(url);await p.locator('#continue').click({timeout:180000});
+  await p.goto(url);await p.locator('#continue').click({timeout:180000});await p.waitForFunction(()=>document.querySelector('canvas').dataset.art==='rigged-pbr',{},{timeout:60000});
   await p.locator('#buy').click();let data=await saved(p);assert.equal(data.state.players[0].cash,1300);assert.equal(data.state.props[1].level,1);
   await p.locator('#upgrade').click();await p.locator('#upgrade').click();data=await saved(p);assert.equal(data.state.props[1].level,3);assert.equal(data.state.players[0].cash,1000);assert(await p.locator('#upgrade').isDisabled());
   await p.locator('#end').click();await p.locator('#roll').click();await p.waitForFunction(()=>document.querySelector('canvas').dataset.moving==='true');assert(await p.locator('#end').isDisabled());assert(await p.locator('#buy').isDisabled());

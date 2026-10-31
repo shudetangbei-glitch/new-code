@@ -14,4 +14,6 @@ GLTFLoader, SkeletonUtils, RoomEnvironment: Three.js r180, MIT license, https://
 
 City building kit: original meshes created with Blender 4.5.9 LTS using build_city_kit.py. Includes six architectural variants with beveled cornices, arched windows, balconies, curved awnings and roof details.
 Sky HDRI: Kloppenheim 06 PureSky, Poly Haven, CC0, https://polyhaven.com/a/kloppenheim_06_puresky
-
+The mobile JPEG sky is an AgX-tonemapped derivative generated with make-mobile-sky.py.
+The compact building kit uses glTF-Transform vertex quantization; the Blender originals remain unchanged.
+Lucide 0.468.0, ISC license, https://lucide.dev; lucide-entry.js bundles only the eight icons used by this game.

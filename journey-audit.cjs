@@ -11,7 +11,7 @@ async function check(name,fn){try{const result=await fn();report.checks.push({na
  await b.locator('#name').fill('测试朋友');await b.locator('#code').fill(code);await b.locator('#join').click();await b.locator('#lobby').waitFor({state:'hidden'});
  await check('two-player synchronization',async()=>{await a.waitForFunction(()=>JSON.parse(localStorage.getItem('wonder-estate-v1')).state.players.length===2);return {host:(await saved(a)).seat,guest:(await saved(b)).seat};});
  await check('mobile toolbar bounds',async()=>{const issues=[];for(const width of [320,375,390]){await a.setViewportSize({width,height:812});for(const button of await a.locator('.tools button').all()){const box=await button.boundingBox();if(box&&(box.x<0||box.x+box.width>width))issues.push({width,id:await button.getAttribute('id'),box});}}if(issues.length)throw Error(JSON.stringify(issues));return 'all inside viewport';});
- await a.setViewportSize({width:375,height:812});
+ await a.setViewportSize({width:375,height:812});for(const page of [a,b])await page.waitForFunction(()=>document.querySelector('canvas').dataset.art==='rigged-pbr',{},{timeout:90000});
  await a.locator('#roll').click();await a.waitForFunction(()=>JSON.parse(localStorage.getItem('wonder-estate-v1')).state.status==='playing');
  for(const [p,label] of [[a,'host'],[b,'guest']])await check(label+' roll, movement, purchase and end turn',async()=>{
   await p.locator('#roll').click({timeout:30000});await p.waitForFunction(()=>JSON.parse(localStorage.getItem('wonder-estate-v1')).state.rolled);

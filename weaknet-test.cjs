@@ -16,6 +16,7 @@ const {webkit}=require('../sokoban-3d/node_modules/playwright');
   });
   await page.goto(process.env.GAME_URL||'http://127.0.0.1:8770/wonder-estate.html');
   await page.locator('#visitCity').click({timeout:70000});
+  await page.waitForFunction(()=>['ready','degraded'].includes(document.querySelector('canvas').dataset.detailState),{},{timeout:70000});
   assert.equal(await page.locator('canvas').getAttribute('data-avatar-mode'),scenario==='all-failed'?'built-in':'downloaded');
   if(scenario==='all-failed')requests.push(...await page.evaluate(()=>window.modelAttempts));
   if(scenario!=='normal')assert(requests[0].endsWith('.glb.gz'),'compressed model must be requested first');
@@ -31,4 +32,3 @@ const {webkit}=require('../sokoban-3d/node_modules/playwright');
   await page.close();
  }}finally{await browser.close();}
 })().catch(e=>{console.error(e.stack);process.exitCode=1;});
-

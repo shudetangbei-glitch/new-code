@@ -1,4 +1,3 @@
-import {createCity} from './wonder-district.js?v=journey-2';
 const $=id=>document.getElementById(id),COLORS=['#ef7c8f','#70d4c5','#f2cc72','#9ba0ed'],KEY='wonder-estate-v1';
 let session=null,s=null,busy=false,city,audio=false,context,finishedShown=false;const tiles=['云端车站','风铃公寓','花匠小屋','茶室','玻璃工坊','山岚书店','星光宝藏','旧城旅馆','艺术馆','天文商店','小剧场','钟表铺','碧湾港口','珊瑚酒店','灯塔公寓','航海博物馆','码头餐厅','海风花园','城市宝藏','森林别墅','音乐厅','植物研究所','云顶庄园','观景酒店'];
 const price=p=>160+p%6*40,up=p=>120+p%6*30,special=p=>p%6===0;
@@ -35,7 +34,9 @@ let polling=false;
 setInterval(async()=>{if(polling||!session||session.mode!=='online'||busy||$('lobby').open)return;const active=session;polling=true;try{const r=await rpc('get');if(session!==active||busy)return;if(r.state.version>s.version){s=r.state;store();render();}if($('status').textContent.startsWith('连接暂时中断'))$('status').textContent='';}catch{if(session===active)$('status').textContent='连接暂时中断，进度已保留，正在重连…';}finally{polling=false;}},2000);window.addEventListener('pagehide',store);
 $('create').disabled=$('join').disabled=true;
 async function checkOnline(){$('create').disabled=$('join').disabled=false;try{await rpc('get',{room_code:'__probe__'});}catch(e){if(!e.message.includes('房间不存在'))$('lobbyStatus').textContent='联机连接暂时不稳定，可重试创建或加入房间，也可先玩同屏对局。';}}
-try{city=await createCity($('scene'));$('loading').style.display='none';city.update(initial(['玩家一','玩家二']));showLobby();if($('scene').dataset.avatarMode==='built-in')$('lobbyStatus').textContent='人物下载暂不可用，已使用备用人物进入，存档不受影响。';checkOnline();}catch(e){console.error(e);const box=$('loading');box.style.pointerEvents='auto';box.textContent='3D 场景暂时无法加载：'+(e.message||'资源连接中断');const retry=document.createElement('button');retry.textContent='重新加载';retry.style.cssText='display:block;margin:16px auto';retry.onclick=()=>location.reload();box.append(retry);}
+showLobby();checkOnline();
+for(const href of ['./three-runtime.js?v=mobile-1','./art-loader.js?v=district-1','./city-art.js?v=fast-1']){const link=document.createElement('link');link.rel='modulepreload';link.href=href;document.head.append(link);}
+void(async()=>{try{const {createCity}=await import('./wonder-district.js?v=fast-1');city=await createCity($('scene'));$('loading').style.display='none';if(session&&s){city.reset(s);render();}else city.update(initial(['玩家一','玩家二']));}catch(e){console.error(e);const box=$('loading');box.style.pointerEvents='auto';box.textContent='3D 场景暂时无法加载：'+(e.message||'资源连接中断');const retry=document.createElement('button');retry.textContent='重新加载';retry.style.cssText='display:block;margin:16px auto';retry.onclick=()=>location.reload();box.append(retry);}})();
 let puzzlePath=[];
 const blocked=()=>[4,s.dice%2===0?1:3];
 function validPath(path){return path.length>=5&&path.length<=9&&path[0]===0&&path.at(-1)===8&&new Set(path).size===path.length&&path.every((v,i)=>v>=0&&v<=8&&!blocked().includes(v)&&(!i||Math.abs(Math.floor(v/3)-Math.floor(path[i-1]/3))+Math.abs(v%3-path[i-1]%3)===1));}

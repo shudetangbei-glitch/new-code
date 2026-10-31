@@ -1,0 +1,14 @@
+import {NodeIO} from '@gltf-transform/core';
+import {ALL_EXTENSIONS} from '@gltf-transform/extensions';
+import {dedup,prune,quantize,weld} from '@gltf-transform/functions';
+import {gzipSync} from 'node:zlib';
+import fs from 'node:fs';
+const io=new NodeIO().registerExtensions(ALL_EXTENSIONS);
+const doc=await io.read('art/city-kit.glb');
+await doc.transform(weld(),dedup(),quantize({quantizePosition:14,quantizeNormal:10,quantizeTexcoord:12}),prune());
+for(let i=0;i<6;i++)if(!doc.getRoot().listNodes().some(node=>node.getName()==='kit_'+i))throw Error('Missing building root '+i);
+const bytes=await io.writeBinary(doc);
+fs.writeFileSync('art/city-kit-compact.glb',bytes);
+const compressed=gzipSync(bytes,{level:9});
+fs.writeFileSync('art/city-kit-compact.glb.gz',compressed);
+console.log(JSON.stringify({raw:bytes.length,gzip:compressed.length,original:fs.statSync('art/city-kit.glb.gz').size}));
