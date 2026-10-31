@@ -1,3 +1,6 @@
+import './lucide-runtime.js';
+import {createLiteCity} from './lite-city.js';
+import {loadCityEngine} from './city-bootstrap.js';
 const $=id=>document.getElementById(id),COLORS=['#ef7c8f','#70d4c5','#f2cc72','#9ba0ed'],KEY='wonder-estate-v1';
 let session=null,s=null,busy=false,city,audio=false,context,finishedShown=false;const tiles=['云端车站','风铃公寓','花匠小屋','茶室','玻璃工坊','山岚书店','星光宝藏','旧城旅馆','艺术馆','天文商店','小剧场','钟表铺','碧湾港口','珊瑚酒店','灯塔公寓','航海博物馆','码头餐厅','海风花园','城市宝藏','森林别墅','音乐厅','植物研究所','云顶庄园','观景酒店'];
 const price=p=>160+p%6*40,up=p=>120+p%6*30,special=p=>p%6===0;
@@ -34,9 +37,14 @@ let polling=false;
 setInterval(async()=>{if(polling||!session||session.mode!=='online'||busy||$('lobby').open)return;const active=session;polling=true;try{const r=await rpc('get');if(session!==active||busy)return;if(r.state.version>s.version){s=r.state;store();render();}if($('status').textContent.startsWith('连接暂时中断'))$('status').textContent='';}catch{if(session===active)$('status').textContent='连接暂时中断，进度已保留，正在重连…';}finally{polling=false;}},2000);window.addEventListener('pagehide',store);
 $('create').disabled=$('join').disabled=true;
 async function checkOnline(){$('create').disabled=$('join').disabled=false;try{await rpc('get',{room_code:'__probe__'});}catch(e){if(!e.message.includes('房间不存在'))$('lobbyStatus').textContent='联机连接暂时不稳定，可重试创建或加入房间，也可先玩同屏对局。';}}
-showLobby();checkOnline();
-for(const href of ['./three-runtime.js?v=mobile-1','./art-loader.js?v=district-1','./city-art.js?v=fast-1']){const link=document.createElement('link');link.rel='modulepreload';link.href=href;document.head.append(link);}
-void(async()=>{try{const {createCity}=await import('./wonder-district.js?v=fast-1');city=await createCity($('scene'));$('loading').style.display='none';if(session&&s){city.reset(s);render();}else city.update(initial(['玩家一','玩家二']));}catch(e){console.error(e);const box=$('loading');box.style.pointerEvents='auto';box.textContent='3D 场景暂时无法加载：'+(e.message||'资源连接中断');const retry=document.createElement('button');retry.textContent='重新加载';retry.style.cssText='display:block;margin:16px auto';retry.onclick=()=>location.reload();box.append(retry);}})();
+const liteCity=createLiteCity($('scene').parentElement);city=liteCity;city.update(initial(['玩家一','玩家二']));$('scene').style.display='none';$('loading').style.display='none';document.body.dataset.renderMode='lite';
+const bootStatus=document.createElement('p');bootStatus.className='status';bootStatus.id='cityStatus';$('lobby').append(bootStatus);
+const retryCity=document.createElement('button');retryCity.id='retryCity';retryCity.innerHTML='<i data-lucide="refresh-cw"></i> 重试3D场景';retryCity.style.width='100%';retryCity.hidden=true;$('lobby').append(retryCity);
+const menuRetry=retryCity.cloneNode(true);menuRetry.id='menuRetryCity';menuRetry.hidden=false;$('menuDialog').append(menuRetry);
+let engineLoading=false;
+async function startCity(){if(engineLoading||document.body.dataset.renderMode==='3d')return;engineLoading=true;retryCity.disabled=menuRetry.disabled=true;retryCity.hidden=true;bootStatus.textContent='地图已就绪，正在连接3D场景…';document.body.dataset.cityPhase='connecting';try{const {createCity}=await loadCityEngine();$('scene').style.display='block';const next=await createCity($('scene'));next.reset(s||initial(['玩家一','玩家二']));city=next;if(session&&s)render();liteCity.destroy();document.body.dataset.renderMode='3d';document.body.dataset.cityPhase='ready';bootStatus.textContent='3D场景已就绪';menuRetry.hidden=true;}catch(error){console.warn('3D连接失败，继续轻量地图',error);$('scene').style.display='none';bootStatus.textContent='3D连接超时或不可用，轻量地图仍可正常对局。';document.body.dataset.cityPhase='fallback';retryCity.hidden=false;}finally{engineLoading=false;retryCity.disabled=menuRetry.disabled=false;}}
+retryCity.onclick=menuRetry.onclick=startCity;
+showLobby();checkOnline();window.lucide?.createIcons();void startCity();
 let puzzlePath=[];
 const blocked=()=>[4,s.dice%2===0?1:3];
 function validPath(path){return path.length>=5&&path.length<=9&&path[0]===0&&path.at(-1)===8&&new Set(path).size===path.length&&path.every((v,i)=>v>=0&&v<=8&&!blocked().includes(v)&&(!i||Math.abs(Math.floor(v/3)-Math.floor(path[i-1]/3))+Math.abs(v%3-path[i-1]%3)===1));}

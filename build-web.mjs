@@ -1,0 +1,16 @@
+import {build} from 'esbuild';
+import fs from 'node:fs';
+import {createHash} from 'node:crypto';
+const filename='wonder-city-runtime-20261101.js';
+await build({entryPoints:['lucide-entry.js'],bundle:true,minify:true,format:'iife',platform:'browser',target:'es2020',legalComments:'inline',outfile:'lucide-runtime.js'});
+const runtime=await build({entryPoints:['wonder-district.js'],bundle:true,minify:true,format:'esm',platform:'browser',target:'es2020',legalComments:'inline',write:false,metafile:true});
+for(const output of Object.values(runtime.metafile.outputs))if(output.imports.some(item=>item.external))throw Error('City runtime still has external imports');
+const source=runtime.outputFiles[0].text;
+fs.writeFileSync(filename,source);
+fs.writeFileSync('runtime-build-info.js',`export const RUNTIME_FILE=${JSON.stringify(filename)};\nexport const RUNTIME_HASH=${JSON.stringify(createHash('sha256').update(source).digest('hex'))};\n`);
+const bootstrap=await build({entryPoints:['wonder-estate.js'],bundle:true,minify:true,format:'iife',platform:'browser',target:'es2020',legalComments:'inline',write:false});
+const code=bootstrap.outputFiles[0].text.replace(/<\/script/gi,'<\\/script');
+const template=fs.readFileSync('wonder-estate.shell.html','utf8');
+if(!template.includes('<!-- APP_BOOTSTRAP -->'))throw Error('Missing bootstrap marker');
+fs.writeFileSync('wonder-estate.html',template.replace('<!-- APP_BOOTSTRAP -->',`<script>${code}</script>`));
+console.log(JSON.stringify({runtimeBytes:Buffer.byteLength(source),inlineBytes:Buffer.byteLength(code),htmlBytes:fs.statSync('wonder-estate.html').size}));
