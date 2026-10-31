@@ -1,4 +1,4 @@
-import {createCity} from './wonder-city.js?v=street-1';
+import {createCity} from './wonder-city.js?v=street-2';
 const $=id=>document.getElementById(id),COLORS=['#ef7c8f','#70d4c5','#f2cc72','#9ba0ed'],KEY='wonder-estate-v1';
 let session=null,s=null,busy=false,city,audio=false,context,finishedShown=false;const tiles=['云端车站','风铃公寓','花匠小屋','茶室','玻璃工坊','山岚书店','星光宝藏','旧城旅馆','艺术馆','天文商店','小剧场','钟表铺','碧湾港口','珊瑚酒店','灯塔公寓','航海博物馆','码头餐厅','海风花园','城市宝藏','森林别墅','音乐厅','植物研究所','云顶庄园','观景酒店'];
 const price=p=>160+p%6*40,up=p=>120+p%6*30,special=p=>p%6===0;
@@ -26,5 +26,6 @@ const baseRpc=rpc;rpc=(op,extra={})=>baseRpc(op,op==='solve'?{...extra,player_na
 const baseRender=render;render=function(){baseRender();if(!s)return;$('challenge').hidden=!s.challenge||!s.rolled||s.status!=='playing';$('challenge').disabled=busy||(session.mode==='online'&&session.seat!==s.turn);};
 function drawPuzzle(){$('puzzleGrid').replaceChildren(...Array.from({length:9},(_,i)=>{const b=document.createElement('button');b.textContent=i===0?'起点':i===8?'核心':blocked().includes(i)?'×':puzzlePath.includes(i)?String(puzzlePath.indexOf(i)+1):'·';b.disabled=blocked().includes(i);b.className=puzzlePath.includes(i)?'chosen':'';b.onclick=()=>{puzzlePath.push(i);drawPuzzle();};return b;}));}
 $('challenge').onclick=()=>{puzzlePath=[];$('puzzleStatus').textContent='';drawPuzzle();$('puzzle').showModal();};$('clearPath').onclick=()=>{puzzlePath=[];drawPuzzle();};$('solvePath').onclick=async()=>{if(!validPath(puzzlePath)){$('puzzleStatus').textContent='路线还未连通，请重选。';return;}await action('solve');if(!s.challenge)$('puzzle').close();};
+window.addEventListener('wonder-explore-exit',()=>{if(!session)showLobby();});
 export {initial,localAction};
 
