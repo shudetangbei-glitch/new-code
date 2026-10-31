@@ -12,3 +12,6 @@ Maps were reduced to 512 pixels for mobile delivery. Normal and roughness maps a
 
 GLTFLoader, SkeletonUtils, RoomEnvironment: Three.js r180, MIT license, https://github.com/mrdoob/three.js
 
+City building kit: original meshes created with Blender 4.5.9 LTS using build_city_kit.py. Includes six architectural variants with beveled cornices, arched windows, balconies, curved awnings and roof details.
+Sky HDRI: Kloppenheim 06 PureSky, Poly Haven, CC0, https://polyhaven.com/a/kloppenheim_06_puresky
+
