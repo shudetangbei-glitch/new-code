@@ -1,0 +1,23 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs/promises';
+const source=await fs.readFile(new URL('./touch-controls.js',import.meta.url),'utf8');
+const {bindDirectionPad}=await import('data:text/javascript;base64,'+Buffer.from(source).toString('base64'));
+const listeners={},captures=[],buttons=['w','a','s','d'].map(direction=>({dataset:{direction},closest(){return this;}}));
+const pad={addEventListener:(name,fn)=>listeners[name]=fn,contains:el=>buttons.includes(el),setPointerCapture:id=>captures.push(id)};
+const doc={elementFromPoint:x=>buttons[x]||null};
+let active=[];
+const control=bindDirectionPad(pad,keys=>active=[...keys].sort(),doc);
+function send(type,id,x,extra={}){let prevented=false;listeners[type]({pointerId:id,clientX:x,clientY:0,pointerType:'touch',button:0,preventDefault(){prevented=true;},...extra});return prevented;}
+assert(send('pointerdown',1,0));assert.deepEqual(active,['w']);assert.deepEqual(captures,[1]);
+assert(send('pointermove',1,2));assert.deepEqual(active,['s']);
+send('pointermove',1,99);assert.deepEqual(active,[]);
+send('pointermove',1,1);assert.deepEqual(active,['a']);
+send('pointerdown',2,0);assert.deepEqual(active,['a','w']);
+send('pointercancel',1,1);assert.deepEqual(active,['w']);
+send('lostpointercapture',2,0);assert.deepEqual(active,[]);
+send('pointerdown',3,3);send('pointerup',3,3);assert.deepEqual(active,[]);
+send('pointerdown',4,0);control.clear();assert.deepEqual(active,[]);
+send('pointermove',4,2);assert.deepEqual(active,[]);
+send('pointerdown',5,0,{pointerType:'mouse',button:2});assert.deepEqual(active,[]);
+let prevented=false;listeners.contextmenu({preventDefault(){prevented=true;}});assert(prevented);
+console.log('PASS: hold, slide direction, slide outside, multitouch, cancellation, lost capture, release, reset, context menu');
