@@ -1,7 +1,7 @@
 import {build} from 'esbuild';
 import fs from 'node:fs';
 import {createHash} from 'node:crypto';
-const filename='wonder-city-runtime-20261101.js';
+const filename='wonder-city-runtime-20261101-quality.js';
 await build({entryPoints:['lucide-entry.js'],bundle:true,minify:true,format:'iife',platform:'browser',target:'es2020',legalComments:'inline',outfile:'lucide-runtime.js'});
 const runtime=await build({entryPoints:['wonder-district.js'],bundle:true,minify:true,format:'esm',platform:'browser',target:'es2020',legalComments:'inline',write:false,metafile:true});
 for(const output of Object.values(runtime.metafile.outputs))if(output.imports.some(item=>item.external))throw Error('City runtime still has external imports');
