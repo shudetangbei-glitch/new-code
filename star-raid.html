@@ -3159,7 +3159,9 @@ function renderCards() {
     card.innerHTML = `<span class="key">${i + 1}</span><span class="rarity">${RARITY_LABEL[u.rarity]}</span><div class="icon">${u.icon}</div><div class="name"></div><div class="desc"></div><div class="lv"></div>`;
     card.querySelector(".name").textContent = u.name;
     card.querySelector(".desc").textContent = u.desc;
-    card.querySelector(".lv").textContent = u.instant ? "立即生效" : `Lv ${c} → ${c + 1}${Number.isFinite(u.max) ? ` / ${u.max}` : ""}`;
+    card.querySelector(".lv").textContent = u.instant ? "立即生效"
+      : Number.isFinite(u.max) ? `当前 ${c}/${u.max} → ${c + 1}/${u.max}${c + 1 >= u.max ? "（满级）" : ""}`
+      : `Lv ${c} → ${c + 1}`;
     card.addEventListener("click", () => pickUpgrade(u.id));
     wrap.appendChild(card);
   });
@@ -3170,6 +3172,7 @@ function renderCards() {
 function pickUpgrade(id) {
   if (game.mode !== "picking") return;
   const u = UPGRADE_BY_ID[id];
+  if (!u || (game.upgrades[id] || 0) >= u.max) return;
   const oldMax = stats.maxHp, oldShield = stats.maxShield;
   game.upgrades[id] = (game.upgrades[id] || 0) + 1;
   stats = computeStats();
